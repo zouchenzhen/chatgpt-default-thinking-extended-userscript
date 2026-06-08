@@ -132,8 +132,15 @@ It should work only when the account can manually see and select `Thinking -> Ex
 ## Distribution
 
 - GitHub Raw: direct install and auto-update.
-- Greasy Fork: planned.
-- OpenUserJS: planned.
+- GitHub Gist: backup install source.
+- Greasy Fork: requires a logged-in Greasy Fork session and form submission.
+- OpenUserJS: requires a logged-in OpenUserJS session and web import/publish.
+
+Currently published:
+
+- GitHub repository: <https://github.com/zouchenzhen/chatgpt-default-thinking-extended-userscript>
+- GitHub Raw: <https://raw.githubusercontent.com/zouchenzhen/chatgpt-default-thinking-extended-userscript/main/chatgpt-default-thinking-extended.user.js>
+- GitHub Gist: <https://gist.github.com/zouchenzhen/3c4b41481c53542047df5cdb3d053bad>
 
 ## Version
 

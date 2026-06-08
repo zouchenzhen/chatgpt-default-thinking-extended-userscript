@@ -132,8 +132,15 @@ ChatGPT 网页端后台接口不是公开 API。直接改 payload 容易随版�
 ## 发布渠道
 
 - GitHub Raw：适合直接安装和自动更新。
-- Greasy Fork：计划发布。
-- OpenUserJS：计划发布。
+- GitHub Gist：适合作为备用安装来源。
+- Greasy Fork：需要登录 Greasy Fork 后通过 prefill/网页表单提交。
+- OpenUserJS：需要登录 OpenUserJS 后通过网页导入/发布。
+
+当前已发布：
+
+- GitHub 仓库：<https://github.com/zouchenzhen/chatgpt-default-thinking-extended-userscript>
+- GitHub Raw：<https://raw.githubusercontent.com/zouchenzhen/chatgpt-default-thinking-extended-userscript/main/chatgpt-default-thinking-extended.user.js>
+- GitHub Gist：<https://gist.github.com/zouchenzhen/3c4b41481c53542047df5cdb3d053bad>
 
 ## 版本
 
