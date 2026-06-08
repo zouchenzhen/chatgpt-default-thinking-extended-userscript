@@ -142,6 +142,12 @@ ChatGPT 网页端后台接口不是公开 API。直接改 payload 容易随版�
 - GitHub Raw：<https://raw.githubusercontent.com/zouchenzhen/chatgpt-default-thinking-extended-userscript/main/chatgpt-default-thinking-extended.user.js>
 - GitHub Gist：<https://gist.github.com/zouchenzhen/3c4b41481c53542047df5cdb3d053bad>
 
+## 社区
+
+[LINUX DO — 中文开发者社区](https://linux.do/)
+
+本项目认可并感谢 LINUX DO 社区在中文开发者开源交流、项目分享和技术讨论中的价值。除非社区另有明确说明，此处仅为社区致谢和链接，不代表官方背书。
+
 ## 版本
 
 - 当前版本：`0.2.0`

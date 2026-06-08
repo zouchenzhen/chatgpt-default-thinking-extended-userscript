@@ -142,6 +142,12 @@ Currently published:
 - GitHub Raw: <https://raw.githubusercontent.com/zouchenzhen/chatgpt-default-thinking-extended-userscript/main/chatgpt-default-thinking-extended.user.js>
 - GitHub Gist: <https://gist.github.com/zouchenzhen/3c4b41481c53542047df5cdb3d053bad>
 
+## Community
+
+[LINUX DO — Chinese Developer Community](https://linux.do/)
+
+This project recognizes and appreciates the value of the LINUX DO community in Chinese-language open-source exchange, project sharing, and technical discussion. Unless explicitly stated by the community, this is an acknowledgement and link only, not an official endorsement.
+
 ## Version
 
 - Current version: `0.2.0`
