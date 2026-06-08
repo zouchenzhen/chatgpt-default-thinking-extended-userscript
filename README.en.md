@@ -35,7 +35,7 @@ After installation, refresh a new chat page on `https://chatgpt.com/`. The scrip
 
 ## Why This Exists
 
-Some ChatGPT accounts start every new chat with `Instant`, even if the previous chat used `Thinking -> Extended`.
+This script comes from my own K12 / ChatGPT for Teachers account workflow: every new chat starts from `Instant`, and the web app does not preserve the model choice from the previous chat. I had to open the model menu every time and manually switch to the highest mode available to my account, `Thinking -> Extended`.
 
 This script solves a narrow interaction problem: reducing repeated clicks in the ChatGPT web UI. It is not a model unlocker and does not bypass usage limits.
 
