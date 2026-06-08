@@ -8,7 +8,7 @@
 ![Platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Firefox-lightgrey.svg)
 ![Userscript](https://img.shields.io/badge/userscript-Tampermonkey%20%7C%20Violentmonkey-orange.svg)
 ![ChatGPT](https://img.shields.io/badge/target-ChatGPT-10A37F.svg)
-![Version](https://img.shields.io/badge/version-0.2.0-6366f1.svg)
+![Version](https://img.shields.io/badge/version-0.2.1-6366f1.svg)
 
 ---
 
@@ -150,7 +150,7 @@ ChatGPT 网页端后台接口不是公开 API。直接改 payload 容易随版�
 
 ## 版本
 
-- 当前版本：`0.2.0`
+- 当前版本：`0.2.1`
 - 更新时间：`2026-06-08`
 
 ## 许可证

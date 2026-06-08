@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 - 2026-06-08
+
+- Make Chinese the primary userscript metadata language for Greasy Fork zh-CN publishing.
+- Move English metadata to localized `@name:en` and `@description:en` fields.
+
 ## 0.2.0 - 2026-06-08
 
 - Add one-attempt-per-page-load behavior to avoid repeatedly taking over the UI.

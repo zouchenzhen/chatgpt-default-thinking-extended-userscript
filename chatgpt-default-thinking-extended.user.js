@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name         ChatGPT Default Thinking Extended
-// @name:zh-CN   ChatGPT 默认 Thinking Extended
+// @name         ChatGPT 默认 Thinking Extended
+// @name:en      ChatGPT Default Thinking Extended
 // @namespace    https://chatgpt.com/
-// @version      0.2.0
+// @version      0.2.1
 // @lastupdated  2026-06-08
-// @description  Once per page load, select Thinking -> Extended on new ChatGPT chats by using the visible model picker UI.
-// @description:zh-CN 新建 ChatGPT 对话时，通过可见 UI 尝试自动选择 Thinking -> Extended；每次页面加载只执行一次。
+// @description  新建 ChatGPT 对话时，通过可见 UI 尝试自动选择 Thinking -> Extended；每次页面加载只执行一次。
+// @description:en Once per page load, select Thinking -> Extended on new ChatGPT chats by using the visible model picker UI.
 // @author       zouchenzhen
 // @license      MIT
 // @homepageURL  https://github.com/zouchenzhen/chatgpt-default-thinking-extended-userscript
@@ -21,7 +21,7 @@
 (function () {
   'use strict';
 
-  const SCRIPT_VERSION = '0.2.0';
+  const SCRIPT_VERSION = '0.2.1';
   const SCRIPT_UPDATED_AT = '2026-06-08';
   const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v020';
 
