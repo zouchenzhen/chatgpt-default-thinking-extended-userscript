@@ -2,8 +2,8 @@
 // @name         ChatGPT 默认 Thinking Extended
 // @name:en      ChatGPT Default Thinking Extended
 // @namespace    https://chatgpt.com/
-// @version      0.2.1
-// @lastupdated  2026-06-08
+// @version      0.2.2
+// @lastupdated  2026-07-02
 // @description  新建 ChatGPT 对话时，通过可见 UI 尝试自动选择 Thinking -> Extended；每次页面加载只执行一次。
 // @description:en Once per page load, select Thinking -> Extended on new ChatGPT chats by using the visible model picker UI.
 // @author       zouchenzhen
@@ -21,16 +21,20 @@
 (function () {
   'use strict';
 
-  const SCRIPT_VERSION = '0.2.1';
-  const SCRIPT_UPDATED_AT = '2026-06-08';
-  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v020';
+  const SCRIPT_VERSION = '0.2.2';
+  const SCRIPT_UPDATED_AT = '2026-07-02';
+  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v022';
 
   if (window[INSTANCE_KEY]) return;
   window[INSTANCE_KEY] = true;
 
   const CONFIG = {
     targetModel: 'Thinking',
+    targetModelAliases: ['Thinking', '思考'],
     targetThinkingTime: 'Extended',
+    targetThinkingTimeAliases: ['Extended', '进阶', '进阶思考', '深度思考', '高级思考', '高級思考', '扩展', '擴展'],
+    selectThinkingWhenExtendedMissing: false,
+    allowRiskyRightEdgeClick: false,
     applyOnlyOnNewChat: true,
     startDelayMs: 1500,
     waitForPickerMs: 7000,
@@ -68,39 +72,72 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  function clickElement(el) {
-    if (!el) return false;
-    el.scrollIntoView({ block: 'center', inline: 'center' });
-    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
-      el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
-    }
-    return true;
+  function getElementPoint(el, xRatio = 0.5, yRatio = 0.5) {
+    const rect = el.getBoundingClientRect();
+    return {
+      rect,
+      x: rect.left + rect.width * xRatio,
+      y: rect.top + rect.height * yRatio,
+    };
   }
 
-  function clickElementPoint(el, xRatio, yRatio) {
+  function pressEscape() {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }));
+  }
+
+  function dispatchPointerMouseEvent(target, type, x, y) {
+    const isPointer = type.startsWith('pointer') && typeof PointerEvent === 'function';
+    const isPress = type === 'pointerdown' || type === 'mousedown';
+    const eventInit = {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      view: window,
+      clientX: x,
+      clientY: y,
+      screenX: window.screenX + x,
+      screenY: window.screenY + y,
+      button: 0,
+      buttons: isPress ? 1 : 0,
+    };
+
+    if (isPointer) {
+      target.dispatchEvent(new PointerEvent(type, {
+        ...eventInit,
+        pointerId: 1,
+        pointerType: 'mouse',
+        isPrimary: true,
+      }));
+      return;
+    }
+
+    target.dispatchEvent(new MouseEvent(type, eventInit));
+  }
+
+  function clickElementPoint(el, xRatio = 0.5, yRatio = 0.5) {
     if (!el) return false;
-    const rect = el.getBoundingClientRect();
-    const x = rect.left + rect.width * xRatio;
-    const y = rect.top + rect.height * yRatio;
+    el.scrollIntoView({ block: 'center', inline: 'center' });
+    const { x, y } = getElementPoint(el, xRatio, yRatio);
     const target = document.elementFromPoint(x, y) || el;
 
-    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
-      target.dispatchEvent(new MouseEvent(type, {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        clientX: x,
-        clientY: y,
-      }));
+    for (const type of ['pointermove', 'mousemove', 'pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+      dispatchPointerMouseEvent(target, type, x, y);
     }
     return true;
   }
 
-  function hoverElement(el) {
+  function clickElement(el) {
+    return clickElementPoint(el, 0.5, 0.5);
+  }
+
+  function hoverElement(el, xRatio = 0.5, yRatio = 0.5) {
     if (!el) return false;
     el.scrollIntoView({ block: 'center', inline: 'center' });
-    for (const type of ['pointerover', 'mouseover', 'pointerenter', 'mouseenter']) {
-      el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+    const { x, y } = getElementPoint(el, xRatio, yRatio);
+    const target = document.elementFromPoint(x, y) || el;
+
+    for (const type of ['pointerover', 'mouseover', 'pointerenter', 'mouseenter', 'pointermove', 'mousemove']) {
+      dispatchPointerMouseEvent(target, type, x, y);
     }
     return true;
   }
@@ -110,8 +147,9 @@
   }
 
   function buttonTextLooksLikeModelPicker(text) {
-    return /^(Auto|Instant|Thinking|Pro)(\s|$)/i.test(text)
+    return /^(Auto|Instant|Thinking|Pro|自动|即时|思考)(\s|$)/i.test(text)
       || /^Latest\s*[·.]/i.test(text)
+      || /^最新\s*[·.]/i.test(text)
       || /^GPT[-\s]?\d/i.test(text);
   }
 
@@ -139,25 +177,58 @@
       .sort((a, b) => a.distance - b.distance)[0].button;
   }
 
-  function findMenuItemByText(text) {
+  function menuItemContainer(el) {
+    return el && (el.closest('[role="menuitem"], [role="option"], button, [cmdk-item], [data-radix-collection-item], div[tabindex]') || el);
+  }
+
+  function elementLabel(el) {
+    return normalize(el && (el.innerText || el.textContent || el.getAttribute('aria-label') || el.getAttribute('data-testid')));
+  }
+
+  function labelMatches(label, text) {
+    const normalized = normalize(label).toLowerCase();
     const wanted = text.toLowerCase();
+    return normalized === wanted || normalized.startsWith(`${wanted} `);
+  }
+
+  function findMenuItemByText(text) {
     const selectors = [
       '[role="menuitem"]',
       '[role="option"]',
       '[cmdk-item]',
+      '[data-radix-collection-item]',
       'button',
       'div[tabindex]',
       'span',
     ];
 
+    const seen = new Set();
     for (const el of allVisible(selectors.join(','))) {
-      const label = normalize(el.innerText || el.textContent || el.getAttribute('aria-label'));
-      if (!label) continue;
-      if (label.toLowerCase() === wanted || label.toLowerCase().startsWith(`${wanted} `)) {
-        return el.closest('[role="menuitem"], [role="option"], button, [cmdk-item], div[tabindex]') || el;
+      const item = menuItemContainer(el);
+      if (!item || seen.has(item)) continue;
+      seen.add(item);
+
+      if (labelMatches(elementLabel(item), text) || labelMatches(elementLabel(el), text)) {
+        return item;
       }
     }
     return null;
+  }
+
+  function findMenuItemByTexts(texts) {
+    for (const text of texts) {
+      const item = findMenuItemByText(text);
+      if (item) return item;
+    }
+    return null;
+  }
+
+  function findTargetModelItem() {
+    return findMenuItemByTexts(CONFIG.targetModelAliases || [CONFIG.targetModel]);
+  }
+
+  function findTargetThinkingTimeItem() {
+    return findMenuItemByTexts(CONFIG.targetThinkingTimeAliases || [CONFIG.targetThinkingTime]);
   }
 
   async function openModelMenu() {
@@ -181,18 +252,19 @@
   function findThinkingSettingsButton(thinkingItem) {
     if (!thinkingItem) return null;
 
-    const row = thinkingItem.closest('[role="menuitem"], [role="option"], button, [cmdk-item], div[tabindex]') || thinkingItem;
+    const row = menuItemContainer(thinkingItem);
     const rowRect = row.getBoundingClientRect();
 
     const nested = [...row.querySelectorAll('button, [role="button"], [aria-haspopup], [data-testid]')]
       .filter((el) => el !== row)
       .map((el) => ({ el, rect: el.getBoundingClientRect() }))
       .filter(({ rect }) => rect.width > 0 && rect.height > 0)
+      .filter(({ rect }) => rect.left > rowRect.left + rowRect.width * 0.55)
       .sort((a, b) => b.rect.left - a.rect.left);
 
     if (nested.length) return nested[0].el;
 
-    const labels = /configure|setting|settings|thinking|reason|effort|standard|extended|sliders/i;
+    const labels = /configure|setting|settings|thinking|reason|effort|standard|extended|sliders|more|submenu|思考|进阶|標準|標准|高级|高級/i;
     const nearby = [...document.querySelectorAll('button, [role="button"], [aria-haspopup], [data-testid]')]
       .map((el) => ({
         el,
@@ -216,49 +288,70 @@
   }
 
   async function openThinkingTimeSubmenu(thinkingItem) {
-    hoverElement(thinkingItem);
-    await sleep(450);
-    if (findMenuItemByText(CONFIG.targetThinkingTime)) return true;
+    const row = menuItemContainer(thinkingItem);
 
-    const settingsButton = findThinkingSettingsButton(thinkingItem);
-    if (settingsButton) {
-      clickElement(settingsButton);
-      await sleep(350);
-      if (findMenuItemByText(CONFIG.targetThinkingTime)) return true;
+    for (const xRatio of [0.5, 0.82, 0.92]) {
+      hoverElement(row, xRatio, 0.5);
+      await sleep(250);
+      if (findTargetThinkingTimeItem()) return true;
+
+      const settingsButton = findThinkingSettingsButton(row);
+      if (settingsButton) {
+        clickElement(settingsButton);
+        await sleep(350);
+        if (findTargetThinkingTimeItem()) return true;
+        hoverElement(row, xRatio, 0.5);
+        await sleep(150);
+      }
     }
 
-    clickElementPoint(thinkingItem, 0.88, 0.5);
-    await sleep(350);
-    if (findMenuItemByText(CONFIG.targetThinkingTime)) return true;
+    row.focus && row.focus();
+    for (const key of ['ArrowRight', 'Enter', ' ']) {
+      row.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      await sleep(300);
+      if (findTargetThinkingTimeItem()) return true;
+    }
 
-    clickElementPoint(thinkingItem, 0.97, 0.5);
-    await sleep(350);
-    return Boolean(findMenuItemByText(CONFIG.targetThinkingTime));
+    if (CONFIG.allowRiskyRightEdgeClick) {
+      for (const xRatio of [0.88, 0.97]) {
+        clickElementPoint(row, xRatio, 0.5);
+        await sleep(350);
+        if (findTargetThinkingTimeItem()) return true;
+      }
+    }
+
+    return false;
   }
 
   async function chooseThinkingExtended() {
     if (!(await openModelMenu())) return false;
 
-    const thinking = findMenuItemByText(CONFIG.targetModel);
+    const thinking = findTargetModelItem();
     if (!thinking) {
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      pressEscape();
       return false;
     }
 
     await openThinkingTimeSubmenu(thinking);
-    const extended = findMenuItemByText(CONFIG.targetThinkingTime);
+    const extended = findTargetThinkingTimeItem();
 
     if (!extended) {
-      clickElement(thinking);
-      await sleep(250);
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-      log('Selected Thinking, but Extended was not visible');
-      return true;
+      if (CONFIG.selectThinkingWhenExtendedMissing) {
+        clickElement(thinking);
+        await sleep(250);
+        pressEscape();
+        log('Selected Thinking fallback because Extended was not visible');
+        return true;
+      }
+
+      pressEscape();
+      log('Extended was not visible; skipped Thinking fallback');
+      return false;
     }
 
     clickElement(extended);
     await sleep(250);
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    pressEscape();
     log('Selected', CONFIG.targetModel, CONFIG.targetThinkingTime);
     return true;
   }

@@ -8,7 +8,7 @@ A small userscript for the ChatGPT web app. On a new chat page, it uses the visi
 ![Platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Firefox-lightgrey.svg)
 ![Userscript](https://img.shields.io/badge/userscript-Tampermonkey%20%7C%20Violentmonkey-orange.svg)
 ![ChatGPT](https://img.shields.io/badge/target-ChatGPT-10A37F.svg)
-![Version](https://img.shields.io/badge/version-0.2.1-6366f1.svg)
+![Version](https://img.shields.io/badge/version-0.2.2-6366f1.svg)
 
 ---
 
@@ -30,7 +30,7 @@ After installation, refresh a new chat page on `https://chatgpt.com/`. The scrip
 - Tries to select `Thinking -> Extended` on new ChatGPT chats.
 - Runs once per page load. It does not watch DOM mutations or repeatedly take over the UI.
 - Hovers the `Thinking` row first, then tries to click the hidden settings button on the right to reveal `Standard / Extended`.
-- Falls back to selecting `Thinking` if `Extended` is not visible.
+- Clicks only after `Extended` is found by default; it no longer falls back to standard `Thinking` automatically.
 - Does not modify `fetch`, `XMLHttpRequest`, `backend-api`, or any private request payload.
 
 ## Why This Exists
@@ -96,7 +96,11 @@ You can adjust `CONFIG` near the top of the script:
 ```javascript
 const CONFIG = {
   targetModel: 'Thinking',
+  targetModelAliases: ['Thinking', '思考'],
   targetThinkingTime: 'Extended',
+  targetThinkingTimeAliases: ['Extended', '进阶', '进阶思考', '深度思考', '高级思考', '高級思考', '扩展', '擴展'],
+  selectThinkingWhenExtendedMissing: false,
+  allowRiskyRightEdgeClick: false,
   applyOnlyOnNewChat: true,
   startDelayMs: 1500,
   waitForPickerMs: 7000,
@@ -109,13 +113,15 @@ Common tweaks:
 
 - Increase `waitForPickerMs` if the page loads slowly.
 - Set `applyOnlyOnNewChat: false` if you want the script to run outside new chat pages.
+- Set `selectThinkingWhenExtendedMissing: true` if you prefer falling back to standard `Thinking` when `Extended` is not found.
+- Set `allowRiskyRightEdgeClick: true` if your UI only opens the submenu by clicking the far right of the row.
 - Set `debug: true` to inspect behavior in the browser console.
 
 ## FAQ
 
 ### Why did it select Thinking but not Extended?
 
-The current ChatGPT UI reveals the `Standard / Extended` submenu only after hovering the `Thinking` row and clicking the hidden control on the right. The script tries to follow that interaction, but selector updates may be needed if ChatGPT changes the DOM.
+Older versions fell back to clicking `Thinking` when `Extended` was not found, so the result could look like the script only selected standard thinking. Since `0.2.2`, the default behavior no longer downgrades automatically: the script hovers the `Thinking` row, tries the hidden right-side control, tries keyboard submenu expansion, matches English and Chinese labels, and closes the menu if `Extended` still is not found.
 
 ### Why not bypass the UI and modify backend requests?
 
@@ -150,8 +156,8 @@ This project recognizes and appreciates the value of the LINUX DO community in C
 
 ## Version
 
-- Current version: `0.2.1`
-- Updated: `2026-06-08`
+- Current version: `0.2.2`
+- Updated: `2026-07-02`
 
 ## License
 

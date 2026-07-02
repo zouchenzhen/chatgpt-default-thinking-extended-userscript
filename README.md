@@ -8,7 +8,7 @@
 ![Platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Firefox-lightgrey.svg)
 ![Userscript](https://img.shields.io/badge/userscript-Tampermonkey%20%7C%20Violentmonkey-orange.svg)
 ![ChatGPT](https://img.shields.io/badge/target-ChatGPT-10A37F.svg)
-![Version](https://img.shields.io/badge/version-0.2.1-6366f1.svg)
+![Version](https://img.shields.io/badge/version-0.2.2-6366f1.svg)
 
 ---
 
@@ -30,7 +30,7 @@
 - 在 ChatGPT 新建对话页尝试自动选择 `Thinking -> Extended`。
 - 每次页面加载只触发一次，不监听 DOM 变化，不反复抢 UI。
 - 先悬停 `Thinking` 行，再尝试点击右侧隐藏的设置按钮以展开 `Standard / Extended`。
-- 如果当前页面没有出现 `Extended`，脚本会退化为选择 `Thinking` 后退出。
+- 默认只在找到 `Extended` 时点击；如果没找到，不再自动降级选择 `Thinking` 标准版。
 - 不修改 `fetch`、`XMLHttpRequest`、`backend-api` 或任何未公开接口请求体。
 
 ## 为什么需要这个脚本
@@ -96,7 +96,11 @@
 ```javascript
 const CONFIG = {
   targetModel: 'Thinking',
+  targetModelAliases: ['Thinking', '思考'],
   targetThinkingTime: 'Extended',
+  targetThinkingTimeAliases: ['Extended', '进阶', '进阶思考', '深度思考', '高级思考', '高級思考', '扩展', '擴展'],
+  selectThinkingWhenExtendedMissing: false,
+  allowRiskyRightEdgeClick: false,
   applyOnlyOnNewChat: true,
   startDelayMs: 1500,
   waitForPickerMs: 7000,
@@ -109,13 +113,15 @@ const CONFIG = {
 
 - 如果页面加载慢，增大 `waitForPickerMs`。
 - 如果想在非新建对话页也触发，改成 `applyOnlyOnNewChat: false`。
+- 如果愿意在找不到 `Extended` 时退回标准 `Thinking`，改成 `selectThinkingWhenExtendedMissing: true`。
+- 如果你的界面只能靠点击行最右侧展开子菜单，可以尝试 `allowRiskyRightEdgeClick: true`。
 - 如果需要调试选择器，改成 `debug: true` 后查看浏览器控制台。
 
 ## 常见问题
 
 ### 为什么只选到了 Thinking，没有选到 Extended？
 
-ChatGPT 当前 UI 需要先悬停 `Thinking` 行，右侧隐藏设置按钮出现后再点击，才会展开 `Standard / Extended`。脚本已经按这个交互尝试处理，但如果页面 DOM 或按钮标签变了，可能需要更新选择器。
+旧版在没找到 `Extended` 时会退化点击 `Thinking`，因此看起来像“只能自动切到标准版”。`0.2.2` 起默认不会再降级：脚本会先尝试悬停 `Thinking` 行、点击右侧隐藏控件、键盘展开子菜单，并匹配中英文 `Extended / 进阶思考` 文案；如果仍没找到 `Extended`，会关闭菜单并退出。
 
 ### 为什么不直接绕过 UI 改后台请求？
 
@@ -150,8 +156,8 @@ ChatGPT 网页端后台接口不是公开 API。直接改 payload 容易随版�
 
 ## 版本
 
-- 当前版本：`0.2.1`
-- 更新时间：`2026-06-08`
+- 当前版本：`0.2.2`
+- 更新时间：`2026-07-02`
 
 ## 许可证
 

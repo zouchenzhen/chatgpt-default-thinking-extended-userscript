@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 - 2026-07-02
+
+- Improve `Thinking -> Extended` submenu opening for different viewport sizes and UI variants.
+- Dispatch pointer/mouse events with coordinates and try keyboard submenu expansion.
+- Match Chinese labels such as `思考` and `进阶思考` in addition to English labels.
+- Stop falling back to standard `Thinking` by default when `Extended` is not found.
+
 ## 0.2.1 - 2026-06-08
 
 - Make Chinese the primary userscript metadata language for Greasy Fork zh-CN publishing.
