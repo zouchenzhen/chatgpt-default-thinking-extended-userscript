@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2 - 2026-07-12
+
+- Match compact Chinese picker text such as `极速5.5` in addition to `极速 5.5`.
+- Detect both native buttons and elements using `role="button"`, including Chinese model-picker aria labels.
+- Retry the visible-UI selection a few times when ChatGPT's client-side UI is still settling.
+
 ## 0.3.1 - 2026-07-12
 
 - Recognize the new Chinese model-picker labels `极速 / 極速`, `中`, and `高`.

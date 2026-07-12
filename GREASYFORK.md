@@ -21,4 +21,4 @@ GitHub: <https://github.com/zouchenzhen/chatgpt-default-thinking-extended-usersc
 
 安装 / 更新源: <https://raw.githubusercontent.com/zouchenzhen/chatgpt-default-thinking-extended-userscript/main/chatgpt-default-thinking-extended.user.js>
 
-当前版本：`0.3.1`
+当前版本：`0.3.2`

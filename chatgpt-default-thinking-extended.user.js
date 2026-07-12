@@ -2,7 +2,7 @@
 // @name         ChatGPT 默认 Thinking Extended
 // @name:en      ChatGPT Default Thinking Extended
 // @namespace    https://chatgpt.com/
-// @version      0.3.1
+// @version      0.3.2
 // @lastupdated  2026-07-12
 // @description  新建 ChatGPT 对话时，通过可见 UI 自动选择最新旗舰模型与最高可用思考强度；每次页面加载只执行一次。
 // @description:en Once per page load, select the latest flagship model and highest available reasoning effort on new ChatGPT chats using the visible UI.
@@ -21,9 +21,9 @@
 (function () {
   'use strict';
 
-  const SCRIPT_VERSION = '0.3.1';
+  const SCRIPT_VERSION = '0.3.2';
   const SCRIPT_UPDATED_AT = '2026-07-12';
-  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v031';
+  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v032';
 
   if (window[INSTANCE_KEY]) return;
   window[INSTANCE_KEY] = true;
@@ -43,6 +43,8 @@
     startDelayMs: 1500,
     waitForPickerMs: 7000,
     pollDelayMs: 250,
+    maxAttempts: 3,
+    retryDelayMs: 1000,
     debug: false,
   };
 
@@ -151,16 +153,23 @@
   }
 
   function buttonTextLooksLikeModelPicker(text) {
-    return /^(Auto|Instant|Thinking|Pro|自动|即时|极速|極速|思考|中|高)(\s|$)/i.test(text)
+    const label = normalize(text);
+    return /^(Auto|Instant|Thinking|Pro|自动|即时|极速|極速|思考|中|高)(?=\s|\d|$)/i.test(label)
       || /^Latest\s*[·.]/i.test(text)
       || /^最新\s*[·.]/i.test(text)
-      || /^GPT[-\s]?\d/i.test(text);
+      || /^GPT[-\s]?\d/i.test(text)
+      || /选择.*(模型|模式)|選擇.*(模型|模式)|model.*(select|picker|mode)/i.test(label);
   }
 
   function findModelPickerButton() {
-    const buttons = allVisible('button');
+    const buttons = allVisible('button, [role="button"]');
     const candidates = buttons.filter((button) => {
-      const text = normalize(button.innerText || button.getAttribute('aria-label'));
+      const text = normalize([
+        button.innerText,
+        button.textContent,
+        button.getAttribute('aria-label'),
+        button.getAttribute('data-testid'),
+      ].filter(Boolean).join(' '));
       if (!buttonTextLooksLikeModelPicker(text)) return false;
       const aria = normalize(button.getAttribute('aria-haspopup'));
       return aria === 'menu' || aria === 'listbox' || text.length <= 40;
@@ -399,7 +408,13 @@
     state.attempted = true;
     try {
       if (!(await waitForModelPicker()) || !isNewChatRoute()) return;
-      await chooseLatestStrongest();
+      for (let attempt = 1; attempt <= CONFIG.maxAttempts; attempt += 1) {
+        if (await chooseLatestStrongest()) return;
+        if (attempt < CONFIG.maxAttempts) {
+          pressEscape();
+          await sleep(CONFIG.retryDelayMs);
+        }
+      }
     } finally {
       state.running = false;
     }
