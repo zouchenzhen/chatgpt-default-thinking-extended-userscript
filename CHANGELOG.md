@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 - 2026-07-12
+
+- Recognize the new Chinese model-picker labels `极速 / 極速`, `中`, and `高`.
+- Fix the script not opening the picker when a Chinese ChatGPT page starts in `极速 5.5` mode.
+
 ## 0.3.0 - 2026-07-12
 
 - Adapt to ChatGPT's July 2026 model picker and select `GPT-5.6 Sol` by default.
