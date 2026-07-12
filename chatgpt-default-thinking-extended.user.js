@@ -2,10 +2,10 @@
 // @name         ChatGPT 默认 Thinking Extended
 // @name:en      ChatGPT Default Thinking Extended
 // @namespace    https://chatgpt.com/
-// @version      0.2.2
-// @lastupdated  2026-07-02
-// @description  新建 ChatGPT 对话时，通过可见 UI 尝试自动选择 Thinking -> Extended；每次页面加载只执行一次。
-// @description:en Once per page load, select Thinking -> Extended on new ChatGPT chats by using the visible model picker UI.
+// @version      0.3.0
+// @lastupdated  2026-07-12
+// @description  新建 ChatGPT 对话时，通过可见 UI 自动选择最新旗舰模型与最高可用思考强度；每次页面加载只执行一次。
+// @description:en Once per page load, select the latest flagship model and highest available reasoning effort on new ChatGPT chats using the visible UI.
 // @author       zouchenzhen
 // @license      MIT
 // @homepageURL  https://github.com/zouchenzhen/chatgpt-default-thinking-extended-userscript
@@ -21,19 +21,23 @@
 (function () {
   'use strict';
 
-  const SCRIPT_VERSION = '0.2.2';
-  const SCRIPT_UPDATED_AT = '2026-07-02';
-  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v022';
+  const SCRIPT_VERSION = '0.3.0';
+  const SCRIPT_UPDATED_AT = '2026-07-12';
+  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v030';
 
   if (window[INSTANCE_KEY]) return;
   window[INSTANCE_KEY] = true;
 
   const CONFIG = {
-    targetModel: 'Thinking',
-    targetModelAliases: ['Thinking', '思考'],
-    targetThinkingTime: 'Extended',
-    targetThinkingTimeAliases: ['Extended', '进阶', '进阶思考', '深度思考', '高级思考', '高級思考', '扩展', '擴展'],
-    selectThinkingWhenExtendedMissing: false,
+    targetModel: 'GPT-5.6 Sol',
+    targetModelAliases: ['GPT-5.6 Sol', 'GPT‑5.6 Sol'],
+    targetModelFamilyAliases: ['GPT-5.6 Sol', 'GPT‑5.6 Sol', 'GPT-5.6', 'GPT‑5.6'],
+    targetThinkingTime: 'Extra High',
+    // The first visible entry wins. High/高 remains the fallback for workspaces
+    // whose current ChatGPT rollout does not expose Extra High yet.
+    targetThinkingTimeAliases: ['Extra High', 'Very High', 'Maximum', 'Max', '最高', '极高', '極高', '超高', 'High', '高'],
+    legacyModelAliases: ['Thinking', '思考'],
+    legacyThinkingTimeAliases: ['Extended', '进阶', '进阶思考', '深度思考', '高级思考', '高級思考', '扩展', '擴展'],
     allowRiskyRightEdgeClick: false,
     applyOnlyOnNewChat: true,
     startDelayMs: 1500,
@@ -223,8 +227,27 @@
     return null;
   }
 
+  function findMenuItemsByTexts(texts) {
+    const selectors = '[role="menuitem"], [role="option"], [cmdk-item], [data-radix-collection-item], button, div[tabindex], span';
+    const seen = new Set();
+    const matches = [];
+    for (const el of allVisible(selectors)) {
+      const item = menuItemContainer(el);
+      if (!item || seen.has(item)) continue;
+      seen.add(item);
+      const labels = [elementLabel(item), elementLabel(el)];
+      if (texts.some((text) => labels.some((label) => labelMatches(label, text)))) matches.push(item);
+    }
+    return matches;
+  }
+
   function findTargetModelItem() {
     return findMenuItemByTexts(CONFIG.targetModelAliases || [CONFIG.targetModel]);
+  }
+
+  function findRightmostTargetModelItem() {
+    return findMenuItemsByTexts(CONFIG.targetModelAliases || [CONFIG.targetModel])
+      .sort((a, b) => b.getBoundingClientRect().left - a.getBoundingClientRect().left)[0] || null;
   }
 
   function findTargetThinkingTimeItem() {
@@ -287,19 +310,19 @@
     return nearby[0] && nearby[0].el;
   }
 
-  async function openThinkingTimeSubmenu(thinkingItem) {
+  async function openThinkingTimeSubmenu(thinkingItem, targetFinder = findTargetThinkingTimeItem) {
     const row = menuItemContainer(thinkingItem);
 
     for (const xRatio of [0.5, 0.82, 0.92]) {
       hoverElement(row, xRatio, 0.5);
       await sleep(250);
-      if (findTargetThinkingTimeItem()) return true;
+      if (targetFinder()) return true;
 
       const settingsButton = findThinkingSettingsButton(row);
       if (settingsButton) {
         clickElement(settingsButton);
         await sleep(350);
-        if (findTargetThinkingTimeItem()) return true;
+        if (targetFinder()) return true;
         hoverElement(row, xRatio, 0.5);
         await sleep(150);
       }
@@ -309,51 +332,64 @@
     for (const key of ['ArrowRight', 'Enter', ' ']) {
       row.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
       await sleep(300);
-      if (findTargetThinkingTimeItem()) return true;
+      if (targetFinder()) return true;
     }
 
     if (CONFIG.allowRiskyRightEdgeClick) {
       for (const xRatio of [0.88, 0.97]) {
         clickElementPoint(row, xRatio, 0.5);
         await sleep(350);
-        if (findTargetThinkingTimeItem()) return true;
+        if (targetFinder()) return true;
       }
     }
 
     return false;
   }
 
-  async function chooseThinkingExtended() {
+  async function chooseLatestStrongest() {
     if (!(await openModelMenu())) return false;
 
-    const thinking = findTargetModelItem();
-    if (!thinking) {
-      pressEscape();
-      return false;
+    const family = findMenuItemByTexts(CONFIG.targetModelFamilyAliases);
+    if (family) {
+      const familyRect = family.getBoundingClientRect();
+      const modelSubmenuItem = () => findMenuItemsByTexts(CONFIG.targetModelAliases)
+        .find((item) => item !== family && item.getBoundingClientRect().left >= familyRect.right - 8);
+      await openThinkingTimeSubmenu(family, modelSubmenuItem);
+      const exactModel = findRightmostTargetModelItem();
+      if (exactModel) {
+        clickElement(exactModel);
+        await sleep(300);
+      }
     }
 
-    await openThinkingTimeSubmenu(thinking);
-    const extended = findTargetThinkingTimeItem();
+    // Model selection usually closes the picker, so reopen it for effort.
+    if (!findTargetThinkingTimeItem()) await openModelMenu();
+    const strongestEffort = findTargetThinkingTimeItem();
+    if (strongestEffort) {
+      clickElement(strongestEffort);
+      await sleep(250);
+      pressEscape();
+      log('Selected', CONFIG.targetModel, elementLabel(strongestEffort));
+      return true;
+    }
 
-    if (!extended) {
-      if (CONFIG.selectThinkingWhenExtendedMissing) {
-        clickElement(thinking);
+    // Compatibility fallback for the pre-July-2026 Thinking -> Extended UI.
+    const legacyThinking = findMenuItemByTexts(CONFIG.legacyModelAliases);
+    if (legacyThinking) {
+      await openThinkingTimeSubmenu(legacyThinking);
+      const legacyExtended = findMenuItemByTexts(CONFIG.legacyThinkingTimeAliases);
+      if (legacyExtended) {
+        clickElement(legacyExtended);
         await sleep(250);
         pressEscape();
-        log('Selected Thinking fallback because Extended was not visible');
+        log('Selected legacy Thinking Extended fallback');
         return true;
       }
-
-      pressEscape();
-      log('Extended was not visible; skipped Thinking fallback');
-      return false;
     }
 
-    clickElement(extended);
-    await sleep(250);
     pressEscape();
-    log('Selected', CONFIG.targetModel, CONFIG.targetThinkingTime);
-    return true;
+    log('No supported model/effort option was visible');
+    return Boolean(family);
   }
 
   async function applyForCurrentRoute() {
@@ -363,7 +399,7 @@
     state.attempted = true;
     try {
       if (!(await waitForModelPicker()) || !isNewChatRoute()) return;
-      await chooseThinkingExtended();
+      await chooseLatestStrongest();
     } finally {
       state.running = false;
     }

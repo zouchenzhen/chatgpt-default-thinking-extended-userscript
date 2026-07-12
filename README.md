@@ -1,6 +1,6 @@
 # ChatGPT Default Thinking Extended Userscript
 
-一个用于 ChatGPT 网页端的轻量 userscript。它会在新建对话页加载后，通过页面上可见的模型选择器，尝试自动选择 `Thinking -> Extended`。脚本只模拟你账号界面里已经可见、已授权的 UI 操作，不拦截请求，不修改 ChatGPT 后台接口 payload。
+一个用于 ChatGPT 网页端的轻量 userscript。它会在新建对话页加载后，通过页面上可见的模型选择器，自动选择 `GPT-5.6 Sol` 与最高可用思考强度（优先 `Extra High`，否则选择 `High / 高`）。脚本只模拟你账号界面里已经可见、已授权的 UI 操作，不拦截请求，不修改 ChatGPT 后台接口 payload。
 
 [English README](README.en.md)
 
@@ -8,7 +8,7 @@
 ![Platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Firefox-lightgrey.svg)
 ![Userscript](https://img.shields.io/badge/userscript-Tampermonkey%20%7C%20Violentmonkey-orange.svg)
 ![ChatGPT](https://img.shields.io/badge/target-ChatGPT-10A37F.svg)
-![Version](https://img.shields.io/badge/version-0.2.2-6366f1.svg)
+![Version](https://img.shields.io/badge/version-0.3.0-6366f1.svg)
 
 ---
 
@@ -27,7 +27,7 @@
 
 ## 功能
 
-- 在 ChatGPT 新建对话页尝试自动选择 `Thinking -> Extended`。
+- 在 ChatGPT 新建对话页自动选择 `GPT-5.6 Sol` 与最高可用思考强度。
 - 每次页面加载只触发一次，不监听 DOM 变化，不反复抢 UI。
 - 先悬停 `Thinking` 行，再尝试点击右侧隐藏的设置按钮以展开 `Standard / Extended`。
 - 默认只在找到 `Extended` 时点击；如果没找到，不再自动降级选择 `Thinking` 标准版。
@@ -156,7 +156,7 @@ ChatGPT 网页端后台接口不是公开 API。直接改 payload 容易随版�
 
 ## 版本
 
-- 当前版本：`0.2.2`
+- 当前版本：`0.3.0`
 - 更新时间：`2026-07-02`
 
 ## 许可证

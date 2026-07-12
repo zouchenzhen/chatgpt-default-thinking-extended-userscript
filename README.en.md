@@ -1,6 +1,6 @@
 # ChatGPT Default Thinking Extended Userscript
 
-A small userscript for the ChatGPT web app. On a new chat page, it uses the visible model picker UI to try to select `Thinking -> Extended`. It does not intercept requests, modify backend payloads, or bypass account permissions.
+A small userscript for the ChatGPT web app. On a new chat page, it uses the visible model picker UI to select `GPT-5.6 Sol` and the highest available reasoning effort (preferring `Extra High`, otherwise `High`). It does not intercept requests, modify backend payloads, or bypass account permissions.
 
 [中文 README](README.md)
 
@@ -8,7 +8,7 @@ A small userscript for the ChatGPT web app. On a new chat page, it uses the visi
 ![Platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Firefox-lightgrey.svg)
 ![Userscript](https://img.shields.io/badge/userscript-Tampermonkey%20%7C%20Violentmonkey-orange.svg)
 ![ChatGPT](https://img.shields.io/badge/target-ChatGPT-10A37F.svg)
-![Version](https://img.shields.io/badge/version-0.2.2-6366f1.svg)
+![Version](https://img.shields.io/badge/version-0.3.0-6366f1.svg)
 
 ---
 
@@ -27,7 +27,7 @@ After installation, refresh a new chat page on `https://chatgpt.com/`. The scrip
 
 ## Features
 
-- Tries to select `Thinking -> Extended` on new ChatGPT chats.
+- Selects `GPT-5.6 Sol` and the highest available reasoning effort on new ChatGPT chats.
 - Runs once per page load. It does not watch DOM mutations or repeatedly take over the UI.
 - Hovers the `Thinking` row first, then tries to click the hidden settings button on the right to reveal `Standard / Extended`.
 - Clicks only after `Extended` is found by default; it no longer falls back to standard `Thinking` automatically.
@@ -156,7 +156,7 @@ This project recognizes and appreciates the value of the LINUX DO community in C
 
 ## Version
 
-- Current version: `0.2.2`
+- Current version: `0.3.0`
 - Updated: `2026-07-02`
 
 ## License

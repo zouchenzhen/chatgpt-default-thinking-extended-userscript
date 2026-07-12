@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 - 2026-07-12
+
+- Adapt to ChatGPT's July 2026 model picker and select `GPT-5.6 Sol` by default.
+- Select the highest visible reasoning effort, preferring `Extra High` and falling back to `High / 高`.
+- Keep compatibility with the older `Thinking -> Extended` picker.
+
 ## 0.2.2 - 2026-07-02
 
 - Improve `Thinking -> Extended` submenu opening for different viewport sizes and UI variants.

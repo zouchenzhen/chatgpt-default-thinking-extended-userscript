@@ -1,12 +1,12 @@
-# ChatGPT 默认 Thinking Extended
+# ChatGPT 默认最强模型与思考模式
 
 ## 功能
 
-新建 ChatGPT 对话时，通过网页端可见模型选择器，尝试自动选择 `Thinking -> Extended`。脚本每次页面加载只执行一次，不会持续监听 DOM，也不会反复抢占 UI。
+新建 ChatGPT 对话时，通过网页端可见模型选择器，自动选择 `GPT-5.6 Sol` 与最高可用思考强度（优先 `Extra High`，当前 K12 界面回退为 `High / 高`）。脚本每次页面加载只执行一次，不会持续监听 DOM，也不会反复抢占 UI。
 
-`0.2.2` 起增强了 `Extended` 子菜单展开逻辑：脚本会尝试悬停 `Thinking` 行、点击右侧隐藏控件、使用键盘展开子菜单，并匹配 `Extended`、`进阶思考`、`高级思考`、`扩展` 等中英文界面文案。
+`0.3.0` 已适配 2026 年 7 月新版二维菜单，并保留旧版 `Thinking -> Extended` 界面兜底。
 
-如果仍然找不到 `Extended`，默认会关闭菜单并退出，不再自动降级选择标准 `Thinking`。如需旧行为，可在脚本顶部配置 `selectThinkingWhenExtendedMissing: true`。
+脚本只操作账号当前可见且有权限选择的菜单项，不会绕过套餐或工作区限制。
 
 ## 安全边界
 
@@ -21,4 +21,4 @@ GitHub: <https://github.com/zouchenzhen/chatgpt-default-thinking-extended-usersc
 
 安装 / 更新源: <https://raw.githubusercontent.com/zouchenzhen/chatgpt-default-thinking-extended-userscript/main/chatgpt-default-thinking-extended.user.js>
 
-当前版本：`0.2.2`
+当前版本：`0.3.0`
