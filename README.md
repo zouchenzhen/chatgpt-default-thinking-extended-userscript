@@ -28,14 +28,15 @@
 ## 功能
 
 - 在 ChatGPT 新建对话页自动选择 `GPT-5.6 Sol` 与最高可用思考强度。
-- 每次页面加载只触发一次，不监听 DOM 变化，不反复抢 UI。
-- 先悬停 `Thinking` 行，再尝试点击右侧隐藏的设置按钮以展开 `Standard / Extended`。
-- 默认只在找到 `Extended` 时点击；如果没找到，不再自动降级选择 `Thinking` 标准版。
+- 每次页面加载只启动一轮选择；如果 ChatGPT 界面仍在加载，会有限重试三次，不持续监听 DOM。
+- 兼容英文与中文入口，包括 `Instant 5.5`、`极速 5.5`、无空格的 `极速5.5` 以及 `role="button"` 灰度界面。
+- 优先选择 `Extra High`；当前 K12 / Teachers 界面没有该档位时选择 `High / 高`。
+- 保留旧版 `Thinking -> Extended` 菜单作为兼容兜底。
 - 不修改 `fetch`、`XMLHttpRequest`、`backend-api` 或任何未公开接口请求体。
 
 ## 为什么需要这个脚本
 
-这个脚本来自我自己的 K12 / ChatGPT for Teachers 账号使用场景：新建对话会默认回到 `Instant`，不会保存上一次对话里的模型选择。每次都需要手动打开模型菜单，再切到当前账号可用的最高级模式 `Thinking -> Extended`。
+这个脚本来自我自己的 K12 / ChatGPT for Teachers 账号使用场景：新建对话会默认回到 `Instant / 极速`，不会保存上一次对话里的选择。每次都需要手动打开菜单，切换到旗舰模型 `GPT-5.6 Sol`，再选择最高可用思考强度。
 
 这个脚本解决的是一个很窄的问题：在网页端新建对话时，减少重复点击模型菜单的操作。它不是模型解锁工具，也不是额度绕过工具。
 
@@ -47,10 +48,10 @@
 2. 只在新建对话路由上尝试执行。
 3. 页面加载后等待模型选择按钮出现。
 4. 打开模型菜单。
-5. 查找 `Thinking` 菜单项。
-6. 悬停 `Thinking` 行，尝试点击右侧设置按钮。
-7. 如果出现 `Extended`，点击它。
-8. 如果没有出现 `Extended`，选择 `Thinking` 后退出。
+5. 进入模型子菜单并选择 `GPT-5.6 Sol`。
+6. 模型选择使菜单关闭后，再次打开模型菜单。
+7. 按优先级选择 `Extra High / Very High / Maximum / 最高 / 极高 / 超高`。
+8. 如果账号未开放上述档位，选择 `High / 高`；旧 UI 则尝试 `Thinking -> Extended`。
 
 ## 安全边界
 
@@ -74,7 +75,7 @@
 |---|---|---|
 | 核心方式 | 修改请求或注入模型 ID | 模拟可见 UI 点击 |
 | 权限边界 | 可能尝试不可用模型 | 只选择页面已有选项 |
-| 目标 | 切换任意模型 | 新对话默认选 `Thinking -> Extended` |
+| 目标 | 切换任意模型 | 新对话默认选 `GPT-5.6 Sol` 和最高可用思考强度 |
 | 触发方式 | 常驻监听或拦截请求 | 页面加载后一次性执行 |
 | 风险 | 易失效、易触发异常 | 仍可能因 DOM 改版失效，但边界更清楚 |
 
@@ -95,13 +96,17 @@
 
 ```javascript
 const CONFIG = {
-  targetModel: 'Thinking',
-  targetModelAliases: ['Thinking', '思考'],
-  targetThinkingTime: 'Extended',
-  targetThinkingTimeAliases: ['Extended', '进阶', '进阶思考', '深度思考', '高级思考', '高級思考', '扩展', '擴展'],
-  selectThinkingWhenExtendedMissing: false,
+  targetModel: 'GPT-5.6 Sol',
+  targetModelAliases: ['GPT-5.6 Sol', 'GPT‑5.6 Sol'],
+  targetModelFamilyAliases: ['GPT-5.6 Sol', 'GPT‑5.6 Sol', 'GPT-5.6', 'GPT‑5.6'],
+  targetThinkingTime: 'Extra High',
+  targetThinkingTimeAliases: ['Extra High', 'Very High', 'Maximum', 'Max', '最高', '极高', '極高', '超高', 'High', '高'],
+  legacyModelAliases: ['Thinking', '思考'],
+  legacyThinkingTimeAliases: ['Extended', '进阶', '进阶思考', '高级思考', '扩展'],
   allowRiskyRightEdgeClick: false,
   applyOnlyOnNewChat: true,
+  maxAttempts: 3,
+  retryDelayMs: 1000,
   startDelayMs: 1500,
   waitForPickerMs: 7000,
   pollDelayMs: 250,
@@ -113,15 +118,15 @@ const CONFIG = {
 
 - 如果页面加载慢，增大 `waitForPickerMs`。
 - 如果想在非新建对话页也触发，改成 `applyOnlyOnNewChat: false`。
-- 如果愿意在找不到 `Extended` 时退回标准 `Thinking`，改成 `selectThinkingWhenExtendedMissing: true`。
+- 如果要更改思考强度优先级，调整 `targetThinkingTimeAliases` 的排列顺序；脚本选择第一个可见项。
 - 如果你的界面只能靠点击行最右侧展开子菜单，可以尝试 `allowRiskyRightEdgeClick: true`。
 - 如果需要调试选择器，改成 `debug: true` 后查看浏览器控制台。
 
 ## 常见问题
 
-### 为什么只选到了 Thinking，没有选到 Extended？
+### 为什么只选择了 High / 高，没有选择 Extra High？
 
-旧版在没找到 `Extended` 时会退化点击 `Thinking`，因此看起来像“只能自动切到标准版”。`0.2.2` 起默认不会再降级：脚本会先尝试悬停 `Thinking` 行、点击右侧隐藏控件、键盘展开子菜单，并匹配中英文 `Extended / 进阶思考` 文案；如果仍没找到 `Extended`，会关闭菜单并退出。
+脚本只能选择当前账号菜单里实际可见的档位。它会优先寻找 `Extra High / 最高 / 极高 / 超高`，若工作区只提供截图中的 `Instant / Medium / High`（中文为 `极速 / 中 / 高`），就选择其中最强的 `High / 高`。
 
 ### 为什么不直接绕过 UI 改后台请求？
 
@@ -133,7 +138,7 @@ ChatGPT 网页端后台接口不是公开 API。直接改 payload 容易随版�
 
 ### 支持 ChatGPT for Teachers / Plus / Business 吗？
 
-只要账号页面上能手动看到并选择 `Thinking -> Extended`，脚本就有机会工作。不同账号、组织策略和灰度 UI 可能不同。
+只要账号页面上能手动看到并选择目标模型和思考强度，脚本就有机会工作。不同账号、组织策略和灰度 UI 可能不同；脚本不会解锁被隐藏或禁用的选项。
 
 ## 发布渠道
 
@@ -157,7 +162,7 @@ ChatGPT 网页端后台接口不是公开 API。直接改 payload 容易随版�
 ## 版本
 
 - 当前版本：`0.3.2`
-- 更新时间：`2026-07-02`
+- 更新时间：`2026-07-12`
 
 ## 许可证
 
