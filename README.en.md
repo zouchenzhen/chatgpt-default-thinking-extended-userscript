@@ -42,7 +42,16 @@ This script solves a narrow interaction problem: reducing repeated clicks in the
 
 ## How It Works
 
-The script uses a conservative UI automation flow:
+This is **visible UI automation driven by DOM inspection**: the script finds controls in the page and simulates the hover/click interactions a user would perform. It does not move the operating system's physical mouse cursor, blindly click screenshot coordinates, or rewrite the model parameters sent to ChatGPT's backend.
+
+The implementation has two parts:
+
+- **Locate UI elements:** inspect visible text, `aria-label`, `aria-haspopup`, `role`, `data-testid`, and screen geometry to identify the model picker near the composer, model menu rows, and reasoning-effort options. Matching rules cover English, Chinese, and several current DOM variants.
+- **Trigger UI interactions:** call `scrollIntoView()`, calculate the target with `getBoundingClientRect()` and `document.elementFromPoint()`, then dispatch `pointermove → mousemove → pointerdown → mousedown → pointerup → mouseup → click`. For submenus, it also dispatches hover events and uses `ArrowRight / Enter / Space` as keyboard fallbacks.
+
+These are synthetic DOM events inside the browser page; they do not occupy or move your physical mouse. The script sends a complete pointer/mouse sequence instead of relying only on `element.click()` because ChatGPT's React menus may depend on hover state and the full event chain.
+
+The complete flow is:
 
 1. Runs only on `chatgpt.com` and `chat.openai.com`.
 2. Runs only on new chat routes by default.
@@ -52,6 +61,15 @@ The script uses a conservative UI automation flow:
 6. Reopens the picker after model selection closes it.
 7. Selects the first visible highest-effort alias such as `Extra High`, `Very High`, or `Maximum`.
 8. Falls back to `High / 高` when higher levels are unavailable; on the legacy UI it tries `Thinking -> Extended`.
+
+If ChatGPT's client-side UI is still rendering, the script retries at one-second intervals, up to three times. It stops after success or after the retry limit; it does not continuously scan the page or keep taking over the menu.
+
+### What It Is Not
+
+- Not an operating-system mouse macro and does not use fixed absolute screen coordinates.
+- Not screenshot recognition or OCR; it adapts to zoom and window size primarily through DOM geometry.
+- Not request injection; it does not intercept `fetch` or `XMLHttpRequest`, or rewrite backend payloads.
+- Not a model unlocker; it can select only options that are visible and authorized for the current account.
 
 ## Safety Boundaries
 

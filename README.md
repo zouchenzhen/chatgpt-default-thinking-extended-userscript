@@ -42,7 +42,16 @@
 
 ## 工作原理
 
-脚本采用保守的 UI 自动化流程：
+它属于**基于 DOM 定位的可见 UI 自动化**，可以理解为“脚本找到网页按钮后，模拟用户在网页里的悬停与点击”。它不会移动操作系统里的真实鼠标指针，也不是通过截图识别坐标盲点；更不会直接修改 ChatGPT 发往服务器的模型参数。
+
+具体实现分为两部分：
+
+- **定位 UI 元素**：读取当前可见元素的文字、`aria-label`、`aria-haspopup`、`role`、`data-testid` 和屏幕位置，识别输入框附近的模型选择按钮、模型菜单行以及思考强度选项。中英文标签和部分新版 DOM 变体都包含在匹配规则中。
+- **触发 UI 操作**：先用 `scrollIntoView()` 保证元素可见，再根据 `getBoundingClientRect()` 和 `document.elementFromPoint()` 找到实际点击目标，依次派发 `pointermove → mousemove → pointerdown → mousedown → pointerup → mouseup → click` 事件。需要展开子菜单时还会派发悬停事件，并用 `ArrowRight / Enter / Space` 作为键盘兜底。
+
+这里的“模拟点击”是浏览器页面内部的合成 DOM 事件，不会占用或移动你的物理鼠标。之所以不只调用简单的 `element.click()`，是因为 ChatGPT 的 React 菜单可能依赖完整的 pointer/mouse 事件链和悬停状态。
+
+完整流程如下：
 
 1. 只在 `chatgpt.com` 和 `chat.openai.com` 页面运行。
 2. 只在新建对话路由上尝试执行。
@@ -52,6 +61,15 @@
 6. 模型选择使菜单关闭后，再次打开模型菜单。
 7. 按优先级选择 `Extra High / Very High / Maximum / 最高 / 极高 / 超高`。
 8. 如果账号未开放上述档位，选择 `High / 高`；旧 UI 则尝试 `Thinking -> Extended`。
+
+如果 ChatGPT 的客户端界面仍在渲染，脚本会间隔一秒有限重试，最多三次。成功或重试结束后即停止，不会常驻扫描页面或持续抢占菜单。
+
+### 它不是什么
+
+- 不是操作系统级鼠标宏，不使用固定的绝对屏幕坐标。
+- 不是截图识别或 OCR；页面缩放和窗口大小主要通过 DOM 几何位置适配。
+- 不是接口注入；不拦截 `fetch`、`XMLHttpRequest`，也不改写后台请求 payload。
+- 不是模型解锁工具；只有菜单中当前可见、账号有权点击的选项才能被选择。
 
 ## 安全边界
 
