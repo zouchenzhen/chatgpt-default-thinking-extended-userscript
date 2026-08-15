@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 - 2026-08-15
+
+- Refuse a click or hover when the element at the selected control's coordinates is unrelated to that control. This prevents a transient menu/layout change from clicking a suggested prompt card below the picker.
+- Check every current-picker click before continuing; a failed safety check now stops the selection attempt instead of clicking a different page element.
+
 ## 0.4.0 - 2026-08-15
 
 - Adapt to the current two-level composer picker: `Instant / 极速` → `Advanced / 高级` → `Model / 模型` and `Effort / 推理强度`.

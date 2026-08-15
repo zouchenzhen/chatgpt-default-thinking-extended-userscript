@@ -2,7 +2,7 @@
 // @name         ChatGPT 默认 Thinking Extended
 // @name:en      ChatGPT Default Thinking Extended
 // @namespace    https://chatgpt.com/
-// @version      0.4.0
+// @version      0.4.1
 // @lastupdated  2026-08-15
 // @description  新建 ChatGPT 对话时，通过可见 UI 自动选择 GPT-5.6 Sol 与最高可用推理强度；每次页面加载只执行一次。
 // @description:en Once per page load, select GPT-5.6 Sol and the highest available reasoning effort on new ChatGPT chats using the visible UI.
@@ -21,9 +21,9 @@
 (function () {
   'use strict';
 
-  const SCRIPT_VERSION = '0.4.0';
+  const SCRIPT_VERSION = '0.4.1';
   const SCRIPT_UPDATED_AT = '2026-08-15';
-  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v040';
+  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v041';
 
   if (window[INSTANCE_KEY]) return;
   window[INSTANCE_KEY] = true;
@@ -123,11 +123,34 @@
     target.dispatchEvent(new MouseEvent(type, eventInit));
   }
 
+  function pointTargetBelongsToElement(el, pointTarget) {
+    if (!pointTarget || !(pointTarget instanceof Element)) return null;
+    if (pointTarget === el || el.contains(pointTarget)) return pointTarget;
+
+    // Dispatching to an ancestor is less reliable for React controls, so keep
+    // the originally identified target in that case.  Never accept body/html:
+    // they contain every element and would defeat this safety check.
+    if (pointTarget !== document.body
+      && pointTarget !== document.documentElement
+      && pointTarget.contains(el)) return el;
+
+    return null;
+  }
+
+  function getSafePointTarget(el, x, y) {
+    if (!el || !el.isConnected || !visible(el)) return null;
+    const pointTarget = document.elementFromPoint(x, y);
+    const safeTarget = pointTargetBelongsToElement(el, pointTarget);
+    if (!safeTarget) log('Skipped click/hover: point target is unrelated to selected control');
+    return safeTarget;
+  }
+
   function clickElementPoint(el, xRatio = 0.5, yRatio = 0.5) {
-    if (!el) return false;
+    if (!el || !el.isConnected || !visible(el)) return false;
     el.scrollIntoView({ block: 'center', inline: 'center' });
     const { x, y } = getElementPoint(el, xRatio, yRatio);
-    const target = document.elementFromPoint(x, y) || el;
+    const target = getSafePointTarget(el, x, y);
+    if (!target) return false;
 
     for (const type of ['pointermove', 'mousemove', 'pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
       dispatchPointerMouseEvent(target, type, x, y);
@@ -140,10 +163,11 @@
   }
 
   function hoverElement(el, xRatio = 0.5, yRatio = 0.5) {
-    if (!el) return false;
+    if (!el || !el.isConnected || !visible(el)) return false;
     el.scrollIntoView({ block: 'center', inline: 'center' });
     const { x, y } = getElementPoint(el, xRatio, yRatio);
-    const target = document.elementFromPoint(x, y) || el;
+    const target = getSafePointTarget(el, x, y);
+    if (!target) return false;
 
     for (const type of ['pointerover', 'mouseover', 'pointerenter', 'mouseenter', 'pointermove', 'mousemove']) {
       dispatchPointerMouseEvent(target, type, x, y);
@@ -293,7 +317,7 @@
     const advanced = findMenuItemByTexts(CONFIG.advancedAliases);
     if (!advanced) return false;
 
-    clickElement(advanced);
+    if (!clickElement(advanced)) return false;
     return Boolean(await waitForFinder(() => findMenuItemByTexts([
       ...CONFIG.modelSettingAliases,
       ...CONFIG.effortSettingAliases,
@@ -304,11 +328,11 @@
     const row = findMenuItemByTexts(rowAliases);
     if (!row) return false;
 
-    clickElement(row);
+    if (!clickElement(row)) return false;
     const choice = await waitForFinder(() => findExactChoiceByTexts(choiceAliases), 1500);
     if (!choice) return false;
 
-    clickElement(choice);
+    if (!clickElement(choice)) return false;
     await sleep(300);
     return true;
   }
@@ -357,7 +381,7 @@
   async function openModelMenu() {
     const picker = findModelPickerButton();
     if (!picker) return false;
-    clickElement(picker);
+    if (!clickElement(picker)) return false;
     await sleep(250);
     return true;
   }
@@ -467,8 +491,7 @@
         .find((item) => item !== family && item.getBoundingClientRect().left >= familyRect.right - 8);
       await openThinkingTimeSubmenu(family, modelSubmenuItem);
       const exactModel = findRightmostTargetModelItem();
-      if (exactModel) {
-        clickElement(exactModel);
+      if (exactModel && clickElement(exactModel)) {
         await sleep(300);
       }
     }
@@ -477,7 +500,10 @@
     if (!findExactChoiceByTexts(CONFIG.targetThinkingTimeAliases || [CONFIG.targetThinkingTime])) await openModelMenu();
     const strongestEffort = findExactChoiceByTexts(CONFIG.targetThinkingTimeAliases || [CONFIG.targetThinkingTime]);
     if (strongestEffort) {
-      clickElement(strongestEffort);
+      if (!clickElement(strongestEffort)) {
+        pressEscape();
+        return advancedResult.modelSelected || Boolean(family);
+      }
       await sleep(250);
       pressEscape();
       log('Selected', CONFIG.targetModel, elementLabel(strongestEffort));
@@ -489,8 +515,7 @@
     if (legacyThinking) {
       await openThinkingTimeSubmenu(legacyThinking);
       const legacyExtended = findMenuItemByTexts(CONFIG.legacyThinkingTimeAliases);
-      if (legacyExtended) {
-        clickElement(legacyExtended);
+      if (legacyExtended && clickElement(legacyExtended)) {
         await sleep(250);
         pressEscape();
         log('Selected legacy Thinking Extended fallback');
