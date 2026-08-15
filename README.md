@@ -8,7 +8,7 @@
 ![Platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Firefox-lightgrey.svg)
 ![Userscript](https://img.shields.io/badge/userscript-Tampermonkey%20%7C%20Violentmonkey-orange.svg)
 ![ChatGPT](https://img.shields.io/badge/target-ChatGPT-10A37F.svg)
-![Version](https://img.shields.io/badge/version-0.3.2-6366f1.svg)
+![Version](https://img.shields.io/badge/version-0.4.0-6366f1.svg)
 
 ---
 
@@ -29,7 +29,7 @@
 
 - 在 ChatGPT 新建对话页自动选择 `GPT-5.6 Sol` 与最高可用思考强度。
 - 每次页面加载只启动一轮选择；如果 ChatGPT 界面仍在加载，会有限重试三次，不持续监听 DOM。
-- 兼容英文与中文入口，包括 `Instant 5.5`、`极速 5.5`、无空格的 `极速5.5` 以及 `role="button"` 灰度界面。
+- 兼容新版英文和中文两级入口：`Instant / 极速` 按钮 → `Advanced / 高级` → `Model / 模型` 与 `Effort / 推理强度`。
 - 优先选择 `Extra High`；当前 K12 / Teachers 界面没有该档位时选择 `High / 高`。
 - 保留旧版 `Thinking -> Extended` 菜单作为兼容兜底。
 - 不修改 `fetch`、`XMLHttpRequest`、`backend-api` 或任何未公开接口请求体。
@@ -56,9 +56,9 @@
 1. 只在 `chatgpt.com` 和 `chat.openai.com` 页面运行。
 2. 只在新建对话路由上尝试执行。
 3. 页面加载后等待模型选择按钮出现。
-4. 打开模型菜单。
-5. 进入模型子菜单并选择 `GPT-5.6 Sol`。
-6. 模型选择使菜单关闭后，再次打开模型菜单。
+4. 打开输入框右侧的速度/模型按钮（如 `Instant / 极速`）。
+5. 进入 `Advanced / 高级`，再打开 `Model / 模型` 并选择 `GPT-5.6 Sol`。
+6. 模型选择使菜单关闭后，重新打开 `Advanced / 高级`，进入 `Effort / 推理强度`。
 7. 按优先级选择 `Extra High / Very High / Maximum / 最高 / 极高 / 超高`。
 8. 如果账号未开放上述档位，选择 `High / 高`；旧 UI 则尝试 `Thinking -> Extended`。
 
@@ -179,8 +179,8 @@ ChatGPT 网页端后台接口不是公开 API。直接改 payload 容易随版�
 
 ## 版本
 
-- 当前版本：`0.3.2`
-- 更新时间：`2026-07-12`
+- 当前版本：`0.4.0`
+- 更新时间：`2026-08-15`
 
 ## 许可证
 

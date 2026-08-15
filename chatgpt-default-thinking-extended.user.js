@@ -2,10 +2,10 @@
 // @name         ChatGPT 默认 Thinking Extended
 // @name:en      ChatGPT Default Thinking Extended
 // @namespace    https://chatgpt.com/
-// @version      0.3.2
-// @lastupdated  2026-07-12
-// @description  新建 ChatGPT 对话时，通过可见 UI 自动选择最新旗舰模型与最高可用思考强度；每次页面加载只执行一次。
-// @description:en Once per page load, select the latest flagship model and highest available reasoning effort on new ChatGPT chats using the visible UI.
+// @version      0.4.0
+// @lastupdated  2026-08-15
+// @description  新建 ChatGPT 对话时，通过可见 UI 自动选择 GPT-5.6 Sol 与最高可用推理强度；每次页面加载只执行一次。
+// @description:en Once per page load, select GPT-5.6 Sol and the highest available reasoning effort on new ChatGPT chats using the visible UI.
 // @author       zouchenzhen
 // @license      MIT
 // @homepageURL  https://github.com/zouchenzhen/chatgpt-default-thinking-extended-userscript
@@ -21,9 +21,9 @@
 (function () {
   'use strict';
 
-  const SCRIPT_VERSION = '0.3.2';
-  const SCRIPT_UPDATED_AT = '2026-07-12';
-  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v032';
+  const SCRIPT_VERSION = '0.4.0';
+  const SCRIPT_UPDATED_AT = '2026-08-15';
+  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v040';
 
   if (window[INSTANCE_KEY]) return;
   window[INSTANCE_KEY] = true;
@@ -36,6 +36,9 @@
     // The first visible entry wins. High/高 remains the fallback for workspaces
     // whose current ChatGPT rollout does not expose Extra High yet.
     targetThinkingTimeAliases: ['Extra High', 'Very High', 'Maximum', 'Max', '最高', '极高', '極高', '超高', 'High', '高'],
+    advancedAliases: ['Advanced', '高级', '高級'],
+    modelSettingAliases: ['Model', '模型'],
+    effortSettingAliases: ['Effort', 'Reasoning effort', '推理强度', '推理強度', '思考强度', '思考強度'],
     legacyModelAliases: ['Thinking', '思考'],
     legacyThinkingTimeAliases: ['Extended', '进阶', '进阶思考', '深度思考', '高级思考', '高級思考', '扩展', '擴展'],
     allowRiskyRightEdgeClick: false,
@@ -219,9 +222,9 @@
     for (const el of allVisible(selectors.join(','))) {
       const item = menuItemContainer(el);
       if (!item || seen.has(item)) continue;
-      seen.add(item);
 
       if (labelMatches(elementLabel(item), text) || labelMatches(elementLabel(el), text)) {
+        seen.add(item);
         return item;
       }
     }
@@ -243,11 +246,99 @@
     for (const el of allVisible(selectors)) {
       const item = menuItemContainer(el);
       if (!item || seen.has(item)) continue;
-      seen.add(item);
       const labels = [elementLabel(item), elementLabel(el)];
-      if (texts.some((text) => labels.some((label) => labelMatches(label, text)))) matches.push(item);
+      if (texts.some((text) => labels.some((label) => labelMatches(label, text)))) {
+        seen.add(item);
+        matches.push(item);
+      }
     }
     return matches;
+  }
+
+  // The August 2026 picker has two levels.  Its first popup only contains an
+  // "Advanced / 高级" action; the actual Model and Effort rows are in the
+  // second popup.  Keep this path deliberately semantic so class-name churn
+  // in the React/Radix implementation does not matter.
+  function findExactChoiceByTexts(texts) {
+    const selectors = '[role="menuitem"], [role="option"], [cmdk-item], [data-radix-collection-item], button, div[tabindex], span';
+    const seen = new Set();
+    const picker = findModelPickerButton();
+
+    for (const el of allVisible(selectors)) {
+      const item = menuItemContainer(el);
+      if (!item || seen.has(item)) continue;
+      seen.add(item);
+
+      // Once High/高 is selected, the composer control itself has that exact
+      // label.  It is a menu opener, not the High/高 option in the submenu.
+      if (picker && (item === picker || item.contains(picker) || picker.contains(item))) continue;
+
+      const itemLabel = elementLabel(item);
+      if (texts.some((text) => labelMatches(itemLabel, text))) return item;
+    }
+    return null;
+  }
+
+  async function waitForFinder(finder, timeout = CONFIG.waitForPickerMs) {
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      const found = finder();
+      if (found) return found;
+      await sleep(CONFIG.pollDelayMs);
+    }
+    return null;
+  }
+
+  async function openAdvancedSettings() {
+    const advanced = findMenuItemByTexts(CONFIG.advancedAliases);
+    if (!advanced) return false;
+
+    clickElement(advanced);
+    return Boolean(await waitForFinder(() => findMenuItemByTexts([
+      ...CONFIG.modelSettingAliases,
+      ...CONFIG.effortSettingAliases,
+    ]), 1500));
+  }
+
+  async function chooseFromAdvancedRow(rowAliases, choiceAliases) {
+    const row = findMenuItemByTexts(rowAliases);
+    if (!row) return false;
+
+    clickElement(row);
+    const choice = await waitForFinder(() => findExactChoiceByTexts(choiceAliases), 1500);
+    if (!choice) return false;
+
+    clickElement(choice);
+    await sleep(300);
+    return true;
+  }
+
+  async function chooseWithAdvancedPicker() {
+    if (!(await openModelMenu())) return { modelSelected: false, effortSelected: false, supported: false };
+    if (!(await openAdvancedSettings())) {
+      pressEscape();
+      return { modelSelected: false, effortSelected: false, supported: false };
+    }
+
+    const modelSelected = await chooseFromAdvancedRow(
+      CONFIG.modelSettingAliases,
+      CONFIG.targetModelAliases || [CONFIG.targetModel],
+    );
+
+    // Selecting a model normally closes all popups.  Reopen from the current
+    // composer control before navigating to the separate Effort submenu.
+    pressEscape();
+    await sleep(150);
+    if (!(await openModelMenu()) || !(await openAdvancedSettings())) {
+      return { modelSelected, effortSelected: false, supported: true };
+    }
+
+    const effortSelected = await chooseFromAdvancedRow(
+      CONFIG.effortSettingAliases,
+      CONFIG.targetThinkingTimeAliases || [CONFIG.targetThinkingTime],
+    );
+    pressEscape();
+    return { modelSelected, effortSelected, supported: true };
   }
 
   function findTargetModelItem() {
@@ -356,6 +447,17 @@
   }
 
   async function chooseLatestStrongest() {
+    // Current ChatGPT UI: speed button -> Advanced/高级 -> Model + Effort.
+    // This is intentionally first, because the top-level speed label itself
+    // may be Instant/极速 or High/高 and is no longer a model-family menu.
+    const advancedResult = await chooseWithAdvancedPicker();
+    if (advancedResult.effortSelected) {
+      log('Selected through Advanced picker', CONFIG.targetModel, CONFIG.targetThinkingTime);
+      return true;
+    }
+
+    // The rest is retained for workspaces that have not received the current
+    // two-level picker, or are still serving the previous model submenu.
     if (!(await openModelMenu())) return false;
 
     const family = findMenuItemByTexts(CONFIG.targetModelFamilyAliases);
@@ -372,8 +474,8 @@
     }
 
     // Model selection usually closes the picker, so reopen it for effort.
-    if (!findTargetThinkingTimeItem()) await openModelMenu();
-    const strongestEffort = findTargetThinkingTimeItem();
+    if (!findExactChoiceByTexts(CONFIG.targetThinkingTimeAliases || [CONFIG.targetThinkingTime])) await openModelMenu();
+    const strongestEffort = findExactChoiceByTexts(CONFIG.targetThinkingTimeAliases || [CONFIG.targetThinkingTime]);
     if (strongestEffort) {
       clickElement(strongestEffort);
       await sleep(250);
@@ -398,7 +500,7 @@
 
     pressEscape();
     log('No supported model/effort option was visible');
-    return Boolean(family);
+    return advancedResult.modelSelected || Boolean(family);
   }
 
   async function applyForCurrentRoute() {

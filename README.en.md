@@ -8,7 +8,7 @@ A small userscript for the ChatGPT web app. On a new chat page, it uses the visi
 ![Platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Firefox-lightgrey.svg)
 ![Userscript](https://img.shields.io/badge/userscript-Tampermonkey%20%7C%20Violentmonkey-orange.svg)
 ![ChatGPT](https://img.shields.io/badge/target-ChatGPT-10A37F.svg)
-![Version](https://img.shields.io/badge/version-0.3.2-6366f1.svg)
+![Version](https://img.shields.io/badge/version-0.4.0-6366f1.svg)
 
 ---
 
@@ -29,7 +29,7 @@ After installation, refresh a new chat page on `https://chatgpt.com/`. The scrip
 
 - Selects `GPT-5.6 Sol` and the highest available reasoning effort on new ChatGPT chats.
 - Starts one selection cycle per page load and retries up to three times while ChatGPT's client-side UI settles; it does not continuously watch DOM mutations.
-- Recognizes English and Chinese entry labels, including `Instant 5.5`, `极速 5.5`, compact `极速5.5`, and rollout variants implemented with `role="button"`.
+- Supports the current English and Chinese two-level path: `Instant / 极速` → `Advanced / 高级` → `Model / 模型` and `Effort / 推理强度`.
 - Prefers `Extra High`; when a K12 / Teachers workspace exposes only the current three levels, it selects `High / 高`.
 - Keeps the legacy `Thinking -> Extended` picker as a compatibility fallback.
 - Does not modify `fetch`, `XMLHttpRequest`, `backend-api`, or any private request payload.
@@ -56,9 +56,9 @@ The complete flow is:
 1. Runs only on `chatgpt.com` and `chat.openai.com`.
 2. Runs only on new chat routes by default.
 3. Waits for the model picker after page load.
-4. Opens the model menu.
-5. Opens the model submenu and selects `GPT-5.6 Sol`.
-6. Reopens the picker after model selection closes it.
+4. Opens the speed/model control beside the composer, such as `Instant / 极速`.
+5. Opens `Advanced / 高级`, then `Model / 模型`, and selects `GPT-5.6 Sol`.
+6. Reopens `Advanced / 高级` after model selection closes the popups, then opens `Effort / 推理强度`.
 7. Selects the first visible highest-effort alias such as `Extra High`, `Very High`, or `Maximum`.
 8. Falls back to `High / 高` when higher levels are unavailable; on the legacy UI it tries `Thinking -> Extended`.
 
@@ -179,8 +179,8 @@ This project recognizes and appreciates the value of the LINUX DO community in C
 
 ## Version
 
-- Current version: `0.3.2`
-- Updated: `2026-07-12`
+- Current version: `0.4.0`
+- Updated: `2026-08-15`
 
 ## License
 

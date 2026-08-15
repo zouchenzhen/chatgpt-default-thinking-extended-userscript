@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 - 2026-08-15
+
+- Adapt to the current two-level composer picker: `Instant / 极速` → `Advanced / 高级` → `Model / 模型` and `Effort / 推理强度`.
+- Select `GPT-5.6 Sol`, reopen the current picker, then select the highest visible effort. This supports the English `Instant / Medium / High` and Chinese `极速 / 中 / 高` menus shown by current ChatGPT workspaces.
+- Prevent the currently selected composer label (`High / 高`) from being mistaken for the effort option in the submenu.
+
 ## 0.3.2 - 2026-07-12
 
 - Match compact Chinese picker text such as `极速5.5` in addition to `极速 5.5`.
