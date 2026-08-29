@@ -2,8 +2,8 @@
 // @name         ChatGPT 默认 Thinking Extended
 // @name:en      ChatGPT Default Thinking Extended
 // @namespace    https://chatgpt.com/
-// @version      0.4.1
-// @lastupdated  2026-08-15
+// @version      0.5.0
+// @lastupdated  2026-08-29
 // @description  新建 ChatGPT 对话时，通过可见 UI 自动选择 GPT-5.6 Sol 与最高可用推理强度；每次页面加载只执行一次。
 // @description:en Once per page load, select GPT-5.6 Sol and the highest available reasoning effort on new ChatGPT chats using the visible UI.
 // @author       zouchenzhen
@@ -21,9 +21,9 @@
 (function () {
   'use strict';
 
-  const SCRIPT_VERSION = '0.4.1';
-  const SCRIPT_UPDATED_AT = '2026-08-15';
-  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v041';
+  const SCRIPT_VERSION = '0.5.0';
+  const SCRIPT_UPDATED_AT = '2026-08-29';
+  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v050';
 
   if (window[INSTANCE_KEY]) return;
   window[INSTANCE_KEY] = true;
@@ -39,6 +39,7 @@
     advancedAliases: ['Advanced', '高级', '高級'],
     modelSettingAliases: ['Model', '模型'],
     effortSettingAliases: ['Effort', 'Reasoning effort', '推理强度', '推理強度', '思考强度', '思考強度'],
+    currentEffortAliases: ['Instant', 'Medium', 'High', '极速', '極速', '中', '高'],
     legacyModelAliases: ['Thinking', '思考'],
     legacyThinkingTimeAliases: ['Extended', '进阶', '进阶思考', '深度思考', '高级思考', '高級思考', '扩展', '擴展'],
     allowRiskyRightEdgeClick: false,
@@ -62,6 +63,24 @@
 
   function normalize(text) {
     return (text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function controlLabel(el) {
+    if (!el) return '';
+    const parts = [...new Set([
+      el.innerText,
+      el.textContent,
+      el.getAttribute && el.getAttribute('aria-label'),
+      el.getAttribute && el.getAttribute('title'),
+      el.getAttribute && el.getAttribute('data-testid'),
+    ].filter(Boolean).map(normalize))];
+    return normalize(parts.join(' '));
+  }
+
+  function isVoiceOrRecordingControl(el) {
+    if (!el || !(el instanceof Element)) return false;
+    const control = el.closest('button, [role="button"]') || el;
+    return /voice|dictat|microphone|\bmic\b|record(?:ing)?|语音|語音|麦克风|麥克風|录音|錄音/i.test(controlLabel(control));
   }
 
   function visible(el) {
@@ -139,8 +158,16 @@
 
   function getSafePointTarget(el, x, y) {
     if (!el || !el.isConnected || !visible(el)) return null;
+    if (isVoiceOrRecordingControl(el)) {
+      log('Blocked click/hover on a voice or recording control');
+      return null;
+    }
     const pointTarget = document.elementFromPoint(x, y);
     const safeTarget = pointTargetBelongsToElement(el, pointTarget);
+    if (safeTarget && isVoiceOrRecordingControl(safeTarget)) {
+      log('Blocked click/hover because the point resolved to a voice or recording control');
+      return null;
+    }
     if (!safeTarget) log('Skipped click/hover: point target is unrelated to selected control');
     return safeTarget;
   }
@@ -182,6 +209,7 @@
   function buttonTextLooksLikeModelPicker(text) {
     const label = normalize(text);
     return /^(Auto|Instant|Thinking|Pro|自动|即时|极速|極速|思考|中|高)(?=\s|\d|$)/i.test(label)
+      || /^(Thinking effort|Reasoning effort|思考强度|思考強度|推理强度|推理強度)$/i.test(label)
       || /^Latest\s*[·.]/i.test(text)
       || /^最新\s*[·.]/i.test(text)
       || /^GPT[-\s]?\d/i.test(text)
@@ -191,24 +219,25 @@
   function findModelPickerButton() {
     const buttons = allVisible('button, [role="button"]');
     const candidates = buttons.filter((button) => {
-      const text = normalize([
-        button.innerText,
-        button.textContent,
-        button.getAttribute('aria-label'),
-        button.getAttribute('data-testid'),
-      ].filter(Boolean).join(' '));
+      if (isVoiceOrRecordingControl(button)) return false;
+      const text = controlLabel(button);
       if (!buttonTextLooksLikeModelPicker(text)) return false;
       const aria = normalize(button.getAttribute('aria-haspopup'));
       return aria === 'menu' || aria === 'listbox' || text.length <= 40;
     });
 
-    if (!candidates.length) return null;
-
     const composer = document.querySelector('form textarea, form [contenteditable="true"], textarea, [contenteditable="true"]');
-    if (!composer) return candidates[0];
+    const composerForm = composer && composer.closest('form');
+    const scopedCandidates = composerForm
+      ? candidates.filter((button) => composerForm.contains(button))
+      : [];
+    const eligibleCandidates = scopedCandidates.length ? scopedCandidates : candidates;
+
+    if (!eligibleCandidates.length) return null;
+    if (!composer) return eligibleCandidates[0];
 
     const composerRect = composer.getBoundingClientRect();
-    return candidates
+    return eligibleCandidates
       .map((button) => {
         const rect = button.getBoundingClientRect();
         const distance = Math.abs(rect.top - composerRect.top) + Math.abs(rect.left - composerRect.right);
@@ -365,6 +394,109 @@
     return { modelSelected, effortSelected, supported: true };
   }
 
+  function findEffortSlider() {
+    const sliders = allVisible('[role="slider"], input[type="range"]')
+      .filter((slider) => !isVoiceOrRecordingControl(slider));
+    if (!sliders.length) return null;
+
+    const picker = findModelPickerButton();
+    if (!picker) return sliders[0];
+    const pickerRect = picker.getBoundingClientRect();
+    return sliders
+      .map((slider) => {
+        const rect = slider.getBoundingClientRect();
+        const distance = Math.abs(rect.top - pickerRect.bottom) + Math.abs(rect.right - pickerRect.right);
+        return { slider, distance };
+      })
+      .sort((a, b) => a.distance - b.distance)[0].slider;
+  }
+
+  function findSliderTrack(slider) {
+    let current = slider;
+    for (let depth = 0; current && depth < 5; depth += 1, current = current.parentElement) {
+      const rect = current.getBoundingClientRect();
+      if (rect.width >= 100 && rect.width <= 500 && rect.height > 0 && rect.height <= 80) return current;
+    }
+    return null;
+  }
+
+  async function setEffortSliderToMaximum(slider) {
+    if (!slider || isVoiceOrRecordingControl(slider)) return false;
+
+    if (slider instanceof HTMLInputElement && slider.type === 'range') {
+      const max = slider.max || slider.getAttribute('max');
+      if (max !== null && max !== '') {
+        const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        if (valueSetter) valueSetter.call(slider, max);
+        else slider.value = max;
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+        slider.dispatchEvent(new Event('change', { bubbles: true }));
+        await sleep(300);
+        return slider.value === String(max);
+      }
+    }
+
+    slider.focus && slider.focus();
+    for (const type of ['keydown', 'keyup']) {
+      slider.dispatchEvent(new KeyboardEvent(type, {
+        key: 'End',
+        code: 'End',
+        bubbles: true,
+        cancelable: true,
+      }));
+    }
+    await sleep(200);
+
+    const valueNowRaw = slider.getAttribute('aria-valuenow');
+    const valueMaxRaw = slider.getAttribute('aria-valuemax');
+    const valueNow = Number(valueNowRaw);
+    const valueMax = Number(valueMaxRaw);
+    if (valueNowRaw !== null && valueMaxRaw !== null
+      && Number.isFinite(valueNow) && Number.isFinite(valueMax) && valueNow >= valueMax) return true;
+
+    const track = findSliderTrack(slider);
+    if (!track || isVoiceOrRecordingControl(track)) return false;
+    if (!clickElementPoint(track, 0.96, 0.5)) return false;
+    await sleep(300);
+    return true;
+  }
+
+  async function chooseWithSliderPicker() {
+    if (!(await openModelMenu())) return { modelSelected: false, effortSelected: false, supported: false };
+
+    const slider = await waitForFinder(findEffortSlider, 1200);
+    if (!slider) {
+      pressEscape();
+      return { modelSelected: false, effortSelected: false, supported: false };
+    }
+
+    const currentEffort = findExactChoiceByTexts(CONFIG.currentEffortAliases);
+    if (!currentEffort || !clickElement(currentEffort)) {
+      pressEscape();
+      return { modelSelected: false, effortSelected: false, supported: true };
+    }
+
+    const modelChoice = await waitForFinder(
+      () => findExactChoiceByTexts(CONFIG.targetModelAliases || [CONFIG.targetModel]),
+      1500,
+    );
+    const modelSelected = Boolean(modelChoice && clickElement(modelChoice));
+    if (!modelSelected) {
+      pressEscape();
+      return { modelSelected: false, effortSelected: false, supported: true };
+    }
+    await sleep(300);
+    pressEscape();
+
+    if (!(await openModelMenu())) {
+      return { modelSelected, effortSelected: false, supported: true };
+    }
+    const reopenedSlider = await waitForFinder(findEffortSlider, 1200);
+    const effortSelected = Boolean(reopenedSlider && await setEffortSliderToMaximum(reopenedSlider));
+    pressEscape();
+    return { modelSelected, effortSelected, supported: true };
+  }
+
   function findTargetModelItem() {
     return findMenuItemByTexts(CONFIG.targetModelAliases || [CONFIG.targetModel]);
   }
@@ -411,27 +543,10 @@
 
     if (nested.length) return nested[0].el;
 
-    const labels = /configure|setting|settings|thinking|reason|effort|standard|extended|sliders|more|submenu|思考|进阶|標準|標准|高级|高級/i;
-    const nearby = [...document.querySelectorAll('button, [role="button"], [aria-haspopup], [data-testid]')]
-      .map((el) => ({
-        el,
-        rect: el.getBoundingClientRect(),
-        label: normalize(el.innerText || el.textContent || el.getAttribute('aria-label') || el.getAttribute('data-testid')),
-      }))
-      .filter(({ el, rect }) => {
-        if (el === row || rect.width <= 0 || rect.height <= 0) return false;
-        const sameVerticalBand = rect.top < rowRect.bottom && rect.bottom > rowRect.top;
-        const onRightSide = rect.left > rowRect.left + rowRect.width * 0.55;
-        const nearRightEdge = rect.right <= rowRect.right + 24;
-        return sameVerticalBand && onRightSide && nearRightEdge;
-      })
-      .sort((a, b) => {
-        const aLabelScore = labels.test(a.label) ? 0 : 1;
-        const bLabelScore = labels.test(b.label) ? 0 : 1;
-        return aLabelScore - bLabelScore || b.rect.left - a.rect.left;
-      });
-
-    return nearby[0] && nearby[0].el;
+    // Never guess a submenu trigger by scanning globally for a button merely
+    // near this row. Composer controls such as microphone and voice mode sit
+    // next to the picker and must remain outside the candidate set.
+    return null;
   }
 
   async function openThinkingTimeSubmenu(thinkingItem, targetFinder = findTargetThinkingTimeItem) {
@@ -471,6 +586,18 @@
   }
 
   async function chooseLatestStrongest() {
+    // Late-August 2026 UI: the first popup contains an effort slider, while
+    // clicking its current effort row opens the model list.
+    const sliderResult = await chooseWithSliderPicker();
+    if (sliderResult.effortSelected) {
+      log('Selected through slider picker', CONFIG.targetModel, 'maximum effort');
+      return true;
+    }
+    // A recognized slider UI is handled only by this path. If either step
+    // fails, let the bounded outer retry start from a clean popup state rather
+    // than reporting success after changing only the model.
+    if (sliderResult.supported) return false;
+
     // Current ChatGPT UI: speed button -> Advanced/高级 -> Model + Effort.
     // This is intentionally first, because the top-level speed label itself
     // may be Instant/极速 or High/高 and is no longer a model-family menu.

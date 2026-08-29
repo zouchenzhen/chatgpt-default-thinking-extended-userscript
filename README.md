@@ -8,7 +8,7 @@
 ![Platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Firefox-lightgrey.svg)
 ![Userscript](https://img.shields.io/badge/userscript-Tampermonkey%20%7C%20Violentmonkey-orange.svg)
 ![ChatGPT](https://img.shields.io/badge/target-ChatGPT-10A37F.svg)
-![Version](https://img.shields.io/badge/version-0.4.1-6366f1.svg)
+![Version](https://img.shields.io/badge/version-0.5.0-6366f1.svg)
 
 ---
 
@@ -29,8 +29,9 @@
 
 - 在 ChatGPT 新建对话页自动选择 `GPT-5.6 Sol` 与最高可用思考强度。
 - 每次页面加载只启动一轮选择；如果 ChatGPT 界面仍在加载，会有限重试三次，不持续监听 DOM。
-- 兼容新版英文和中文两级入口：`Instant / 极速` 按钮 → `Advanced / 高级` → `Model / 模型` 与 `Effort / 推理强度`。
-- 优先选择 `Extra High`；当前 K12 / Teachers 界面没有该档位时选择 `High / 高`。
+- 兼容 2026 年 8 月底新版入口：打开 `Instant / 极速` 后出现思考强度滑杆，点击当前强度行进入模型列表。
+- 自动选择 `GPT-5.6 Sol`，再把经过验证的思考强度滑杆移动到最右端（最高档）。
+- 明确屏蔽麦克风、听写、录音和语音模式按钮；界面改版时也不会把相邻语音按钮当作菜单操作目标。
 - 保留旧版 `Thinking -> Extended` 菜单作为兼容兜底。
 - 不修改 `fetch`、`XMLHttpRequest`、`backend-api` 或任何未公开接口请求体。
 
@@ -57,10 +58,12 @@
 2. 只在新建对话路由上尝试执行。
 3. 页面加载后等待模型选择按钮出现。
 4. 打开输入框右侧的速度/模型按钮（如 `Instant / 极速`）。
-5. 进入 `Advanced / 高级`，再打开 `Model / 模型` 并选择 `GPT-5.6 Sol`。
-6. 模型选择使菜单关闭后，重新打开 `Advanced / 高级`，进入 `Effort / 推理强度`。
-7. 按优先级选择 `Extra High / Very High / Maximum / 最高 / 极高 / 超高`。
-8. 如果账号未开放上述档位，选择 `High / 高`；旧 UI 则尝试 `Thinking -> Extended`。
+5. 在浮层中确认思考强度滑杆，并点击当前强度行（如 `Instant / 极速`）打开模型列表。
+6. 在模型列表中选择 `GPT-5.6 Sol`。
+7. 重新打开入口，确认目标是滑杆控件后，通过 `End` 键事件或滑杆内部点击把它设到最右端。
+8. 如果没有识别到新版滑杆，才依次尝试上一版 `Advanced / 高级` 流程和旧版 `Thinking -> Extended` 流程。
+
+为避免误触，脚本会在每次操作前复核目标元素仍然可见、仍连接在文档中，并确认点击坐标解析到该元素自身或其子元素。任何带有 `voice / microphone / dictation / recording / 语音 / 麦克风 / 录音` 等语义的控件都会被硬性拒绝；脚本也不再通过“在菜单行附近找一个按钮”的方式猜测子菜单入口。
 
 如果 ChatGPT 的客户端界面仍在渲染，脚本会间隔一秒有限重试，最多三次。成功或重试结束后即停止，不会常驻扫描页面或持续抢占菜单。
 
@@ -119,6 +122,7 @@ const CONFIG = {
   targetModelFamilyAliases: ['GPT-5.6 Sol', 'GPT‑5.6 Sol', 'GPT-5.6', 'GPT‑5.6'],
   targetThinkingTime: 'Extra High',
   targetThinkingTimeAliases: ['Extra High', 'Very High', 'Maximum', 'Max', '最高', '极高', '極高', '超高', 'High', '高'],
+  currentEffortAliases: ['Instant', 'Medium', 'High', '极速', '極速', '中', '高'],
   legacyModelAliases: ['Thinking', '思考'],
   legacyThinkingTimeAliases: ['Extended', '进阶', '进阶思考', '高级思考', '扩展'],
   allowRiskyRightEdgeClick: false,
@@ -179,8 +183,8 @@ ChatGPT 网页端后台接口不是公开 API。直接改 payload 容易随版�
 
 ## 版本
 
-- 当前版本：`0.4.1`
-- 更新时间：`2026-08-15`
+- 当前版本：`0.5.0`
+- 更新时间：`2026-08-29`
 
 ## 许可证
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 - 2026-08-29
+
+- Adapt to the late-August picker: opening `Instant` now shows a reasoning-effort slider, and clicking the current effort row opens the model list.
+- Select `GPT-5.6 Sol`, reopen the picker, and move the verified effort slider to its maximum position.
+- Explicitly block clicks and hovers targeting microphone, dictation, recording, or voice-mode controls.
+- Remove the global "nearby button" submenu fallback so adjacent composer controls cannot be mistaken for picker actions.
+- Prefer picker controls inside the same composer form, preventing popup rows from being mistaken for the composer trigger.
+
 ## 0.4.1 - 2026-08-15
 
 - Refuse a click or hover when the element at the selected control's coordinates is unrelated to that control. This prevents a transient menu/layout change from clicking a suggested prompt card below the picker.

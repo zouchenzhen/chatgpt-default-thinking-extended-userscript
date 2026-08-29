@@ -8,7 +8,7 @@ A small userscript for the ChatGPT web app. On a new chat page, it uses the visi
 ![Platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Firefox-lightgrey.svg)
 ![Userscript](https://img.shields.io/badge/userscript-Tampermonkey%20%7C%20Violentmonkey-orange.svg)
 ![ChatGPT](https://img.shields.io/badge/target-ChatGPT-10A37F.svg)
-![Version](https://img.shields.io/badge/version-0.4.1-6366f1.svg)
+![Version](https://img.shields.io/badge/version-0.5.0-6366f1.svg)
 
 ---
 
@@ -29,8 +29,9 @@ After installation, refresh a new chat page on `https://chatgpt.com/`. The scrip
 
 - Selects `GPT-5.6 Sol` and the highest available reasoning effort on new ChatGPT chats.
 - Starts one selection cycle per page load and retries up to three times while ChatGPT's client-side UI settles; it does not continuously watch DOM mutations.
-- Supports the current English and Chinese two-level path: `Instant / 极速` → `Advanced / 高级` → `Model / 模型` and `Effort / 推理强度`.
-- Prefers `Extra High`; when a K12 / Teachers workspace exposes only the current three levels, it selects `High / 高`.
+- Supports the late-August 2026 picker: opening `Instant / 极速` reveals a reasoning-effort slider, while clicking the current effort row opens the model list.
+- Selects `GPT-5.6 Sol`, then moves the verified reasoning-effort slider to its rightmost (maximum) position.
+- Explicitly blocks microphone, dictation, recording, and voice-mode controls so adjacent voice UI cannot be mistaken for a picker action.
 - Keeps the legacy `Thinking -> Extended` picker as a compatibility fallback.
 - Does not modify `fetch`, `XMLHttpRequest`, `backend-api`, or any private request payload.
 
@@ -57,10 +58,12 @@ The complete flow is:
 2. Runs only on new chat routes by default.
 3. Waits for the model picker after page load.
 4. Opens the speed/model control beside the composer, such as `Instant / 极速`.
-5. Opens `Advanced / 高级`, then `Model / 模型`, and selects `GPT-5.6 Sol`.
-6. Reopens `Advanced / 高级` after model selection closes the popups, then opens `Effort / 推理强度`.
-7. Selects the first visible highest-effort alias such as `Extra High`, `Very High`, or `Maximum`.
-8. Falls back to `High / 高` when higher levels are unavailable; on the legacy UI it tries `Thinking -> Extended`.
+5. Confirms that the popup contains a reasoning-effort slider, then clicks the current effort row (such as `Instant / 极速`) to open the model list.
+6. Selects `GPT-5.6 Sol` from that model list.
+7. Reopens the picker, verifies the slider, and moves it to the rightmost position using an `End` key event or a click constrained inside the slider track.
+8. Only when the new slider UI is absent does it try the previous `Advanced / 高级` path and then the legacy `Thinking -> Extended` path.
+
+Before every interaction, the script verifies that the target remains visible and connected, and that the selected coordinates resolve to that element or one of its descendants. Controls carrying `voice / microphone / dictation / recording / 语音 / 麦克风 / 录音` semantics are rejected unconditionally. The script no longer guesses submenu controls by searching for a button merely near a menu row.
 
 If ChatGPT's client-side UI is still rendering, the script retries at one-second intervals, up to three times. It stops after success or after the retry limit; it does not continuously scan the page or keep taking over the menu.
 
@@ -119,6 +122,7 @@ const CONFIG = {
   targetModelFamilyAliases: ['GPT-5.6 Sol', 'GPT‑5.6 Sol', 'GPT-5.6', 'GPT‑5.6'],
   targetThinkingTime: 'Extra High',
   targetThinkingTimeAliases: ['Extra High', 'Very High', 'Maximum', 'Max', '最高', '极高', '極高', '超高', 'High', '高'],
+  currentEffortAliases: ['Instant', 'Medium', 'High', '极速', '極速', '中', '高'],
   legacyModelAliases: ['Thinking', '思考'],
   legacyThinkingTimeAliases: ['Extended', '进阶', '进阶思考', '高级思考', '扩展'],
   allowRiskyRightEdgeClick: false,
@@ -179,8 +183,8 @@ This project recognizes and appreciates the value of the LINUX DO community in C
 
 ## Version
 
-- Current version: `0.4.1`
-- Updated: `2026-08-15`
+- Current version: `0.5.0`
+- Updated: `2026-08-29`
 
 ## License
 
