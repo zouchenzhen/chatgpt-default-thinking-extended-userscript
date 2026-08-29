@@ -8,7 +8,7 @@ A small userscript for the ChatGPT web app. On a new chat page, it uses the visi
 ![Platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Firefox-lightgrey.svg)
 ![Userscript](https://img.shields.io/badge/userscript-Tampermonkey%20%7C%20Violentmonkey-orange.svg)
 ![ChatGPT](https://img.shields.io/badge/target-ChatGPT-10A37F.svg)
-![Version](https://img.shields.io/badge/version-0.5.0-6366f1.svg)
+![Version](https://img.shields.io/badge/version-0.5.1-6366f1.svg)
 
 ---
 
@@ -30,7 +30,7 @@ After installation, refresh a new chat page on `https://chatgpt.com/`. The scrip
 - Selects `GPT-5.6 Sol` and the highest available reasoning effort on new ChatGPT chats.
 - Starts one selection cycle per page load and retries up to three times while ChatGPT's client-side UI settles; it does not continuously watch DOM mutations.
 - Supports the late-August 2026 picker: opening `Instant / 极速` reveals a reasoning-effort slider, while clicking the current effort row opens the model list.
-- Selects `GPT-5.6 Sol`, then moves the verified reasoning-effort slider to its rightmost (maximum) position.
+- Moves the verified reasoning-effort slider to its rightmost position first, then selects `GPT-5.6 Sol`, avoiding popup-state races when that model is already active.
 - Explicitly blocks microphone, dictation, recording, and voice-mode controls so adjacent voice UI cannot be mistaken for a picker action.
 - Keeps the legacy `Thinking -> Extended` picker as a compatibility fallback.
 - Does not modify `fetch`, `XMLHttpRequest`, `backend-api`, or any private request payload.
@@ -58,9 +58,9 @@ The complete flow is:
 2. Runs only on new chat routes by default.
 3. Waits for the model picker after page load.
 4. Opens the speed/model control beside the composer, such as `Instant / 极速`.
-5. Confirms that the popup contains a reasoning-effort slider, then clicks the current effort row (such as `Instant / 极速`) to open the model list.
-6. Selects `GPT-5.6 Sol` from that model list.
-7. Reopens the picker, verifies the slider, and moves it to the rightmost position using an `End` key event or a click constrained inside the slider track.
+5. Confirms the reasoning-effort slider and moves it right using native range assignment, `End`, repeated `ArrowRight`, or a pointer action constrained inside the track.
+6. When numeric ARIA values are exposed, requires `aria-valuenow` to reach `aria-valuemax`.
+7. Clicks the current effort row (such as `High / 高`) to open the model list and selects `GPT-5.6 Sol`.
 8. Only when the new slider UI is absent does it try the previous `Advanced / 高级` path and then the legacy `Thinking -> Extended` path.
 
 Before every interaction, the script verifies that the target remains visible and connected, and that the selected coordinates resolve to that element or one of its descendants. Controls carrying `voice / microphone / dictation / recording / 语音 / 麦克风 / 录音` semantics are rejected unconditionally. The script no longer guesses submenu controls by searching for a button merely near a menu row.
@@ -183,7 +183,7 @@ This project recognizes and appreciates the value of the LINUX DO community in C
 
 ## Version
 
-- Current version: `0.5.0`
+- Current version: `0.5.1`
 - Updated: `2026-08-29`
 
 ## License

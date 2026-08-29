@@ -2,7 +2,7 @@
 // @name         ChatGPT 默认 Thinking Extended
 // @name:en      ChatGPT Default Thinking Extended
 // @namespace    https://chatgpt.com/
-// @version      0.5.0
+// @version      0.5.1
 // @lastupdated  2026-08-29
 // @description  新建 ChatGPT 对话时，通过可见 UI 自动选择 GPT-5.6 Sol 与最高可用推理强度；每次页面加载只执行一次。
 // @description:en Once per page load, select GPT-5.6 Sol and the highest available reasoning effort on new ChatGPT chats using the visible UI.
@@ -21,9 +21,9 @@
 (function () {
   'use strict';
 
-  const SCRIPT_VERSION = '0.5.0';
+  const SCRIPT_VERSION = '0.5.1';
   const SCRIPT_UPDATED_AT = '2026-08-29';
-  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v050';
+  const INSTANCE_KEY = '__chatgptDefaultThinkingExtendedOnce_v051';
 
   if (window[INSTANCE_KEY]) return;
   window[INSTANCE_KEY] = true;
@@ -447,18 +447,43 @@
     }
     await sleep(200);
 
-    const valueNowRaw = slider.getAttribute('aria-valuenow');
-    const valueMaxRaw = slider.getAttribute('aria-valuemax');
-    const valueNow = Number(valueNowRaw);
-    const valueMax = Number(valueMaxRaw);
-    if (valueNowRaw !== null && valueMaxRaw !== null
-      && Number.isFinite(valueNow) && Number.isFinite(valueMax) && valueNow >= valueMax) return true;
+    const isAtMaximum = (candidate = slider) => {
+      const valueNowRaw = candidate && candidate.getAttribute('aria-valuenow');
+      const valueMaxRaw = candidate && candidate.getAttribute('aria-valuemax');
+      const valueNow = Number(valueNowRaw);
+      const valueMax = Number(valueMaxRaw);
+      return valueNowRaw !== null && valueMaxRaw !== null
+        && Number.isFinite(valueNow) && Number.isFinite(valueMax) && valueNow >= valueMax;
+    };
+    if (isAtMaximum()) return true;
+
+    // Custom React/Radix sliders consistently handle ArrowRight even when
+    // their current implementation ignores a synthetic End key.
+    for (let step = 0; step < 12 && !isAtMaximum(); step += 1) {
+      for (const type of ['keydown', 'keyup']) {
+        slider.dispatchEvent(new KeyboardEvent(type, {
+          key: 'ArrowRight',
+          code: 'ArrowRight',
+          bubbles: true,
+          cancelable: true,
+        }));
+      }
+      await sleep(40);
+    }
+    if (isAtMaximum()) return true;
 
     const track = findSliderTrack(slider);
     if (!track || isVoiceOrRecordingControl(track)) return false;
-    if (!clickElementPoint(track, 0.96, 0.5)) return false;
+    if (!clickElementPoint(track, 0.98, 0.5)) return false;
     await sleep(300);
-    return true;
+
+    // Some rollout variants omit numeric ARIA values. In that case a safely
+    // constrained pointer action inside the verified track is the strongest
+    // observable success signal available. If values exist, require max.
+    const activeSlider = findEffortSlider() || slider;
+    const hasNumericAria = activeSlider.getAttribute('aria-valuenow') !== null
+      && activeSlider.getAttribute('aria-valuemax') !== null;
+    return hasNumericAria ? isAtMaximum(activeSlider) : true;
   }
 
   async function chooseWithSliderPicker() {
@@ -470,10 +495,28 @@
       return { modelSelected: false, effortSelected: false, supported: false };
     }
 
-    const currentEffort = findExactChoiceByTexts(CONFIG.currentEffortAliases);
-    if (!currentEffort || !clickElement(currentEffort)) {
+    // Set effort first while the verified slider popup is definitely open.
+    // Selecting an already-active model may close only the nested model list,
+    // so reopening the composer trigger afterward could accidentally toggle
+    // the root popup closed instead of opening it.
+    const effortSelected = await setEffortSliderToMaximum(slider);
+    if (!effortSelected) {
       pressEscape();
       return { modelSelected: false, effortSelected: false, supported: true };
+    }
+
+    let currentEffort = findExactChoiceByTexts(CONFIG.currentEffortAliases);
+    if (!currentEffort && !findEffortSlider()) {
+      // A rollout may commit the slider value by closing the popup. Reopen it
+      // once before looking for the row that leads to the model submenu.
+      if (await openModelMenu()) {
+        await waitForFinder(findEffortSlider, 800);
+        currentEffort = findExactChoiceByTexts(CONFIG.currentEffortAliases);
+      }
+    }
+    if (!currentEffort || !clickElement(currentEffort)) {
+      pressEscape();
+      return { modelSelected: false, effortSelected, supported: true };
     }
 
     const modelChoice = await waitForFinder(
@@ -483,16 +526,9 @@
     const modelSelected = Boolean(modelChoice && clickElement(modelChoice));
     if (!modelSelected) {
       pressEscape();
-      return { modelSelected: false, effortSelected: false, supported: true };
+      return { modelSelected: false, effortSelected, supported: true };
     }
     await sleep(300);
-    pressEscape();
-
-    if (!(await openModelMenu())) {
-      return { modelSelected, effortSelected: false, supported: true };
-    }
-    const reopenedSlider = await waitForFinder(findEffortSlider, 1200);
-    const effortSelected = Boolean(reopenedSlider && await setEffortSliderToMaximum(reopenedSlider));
     pressEscape();
     return { modelSelected, effortSelected, supported: true };
   }
@@ -589,7 +625,7 @@
     // Late-August 2026 UI: the first popup contains an effort slider, while
     // clicking its current effort row opens the model list.
     const sliderResult = await chooseWithSliderPicker();
-    if (sliderResult.effortSelected) {
+    if (sliderResult.modelSelected && sliderResult.effortSelected) {
       log('Selected through slider picker', CONFIG.targetModel, 'maximum effort');
       return true;
     }

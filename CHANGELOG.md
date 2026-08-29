@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1 - 2026-08-29
+
+- Set the reasoning-effort slider before opening the model submenu, avoiding a popup-toggle race when `GPT-5.6 Sol` is already selected.
+- Add repeated `ArrowRight` events after `End`, then use a pointer action constrained to the verified slider track as the final fallback.
+- When numeric ARIA slider values are available, require `aria-valuenow` to reach `aria-valuemax` before reporting success.
+
 ## 0.5.0 - 2026-08-29
 
 - Adapt to the late-August picker: opening `Instant` now shows a reasoning-effort slider, and clicking the current effort row opens the model list.

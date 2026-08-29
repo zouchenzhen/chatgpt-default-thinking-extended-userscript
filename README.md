@@ -8,7 +8,7 @@
 ![Platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Edge%20%7C%20Firefox-lightgrey.svg)
 ![Userscript](https://img.shields.io/badge/userscript-Tampermonkey%20%7C%20Violentmonkey-orange.svg)
 ![ChatGPT](https://img.shields.io/badge/target-ChatGPT-10A37F.svg)
-![Version](https://img.shields.io/badge/version-0.5.0-6366f1.svg)
+![Version](https://img.shields.io/badge/version-0.5.1-6366f1.svg)
 
 ---
 
@@ -30,7 +30,7 @@
 - 在 ChatGPT 新建对话页自动选择 `GPT-5.6 Sol` 与最高可用思考强度。
 - 每次页面加载只启动一轮选择；如果 ChatGPT 界面仍在加载，会有限重试三次，不持续监听 DOM。
 - 兼容 2026 年 8 月底新版入口：打开 `Instant / 极速` 后出现思考强度滑杆，点击当前强度行进入模型列表。
-- 自动选择 `GPT-5.6 Sol`，再把经过验证的思考强度滑杆移动到最右端（最高档）。
+- 先把经过验证的思考强度滑杆移动到最右端（最高档），再进入模型列表选择 `GPT-5.6 Sol`，避免已选中模型导致浮层开关状态错乱。
 - 明确屏蔽麦克风、听写、录音和语音模式按钮；界面改版时也不会把相邻语音按钮当作菜单操作目标。
 - 保留旧版 `Thinking -> Extended` 菜单作为兼容兜底。
 - 不修改 `fetch`、`XMLHttpRequest`、`backend-api` 或任何未公开接口请求体。
@@ -58,9 +58,9 @@
 2. 只在新建对话路由上尝试执行。
 3. 页面加载后等待模型选择按钮出现。
 4. 打开输入框右侧的速度/模型按钮（如 `Instant / 极速`）。
-5. 在浮层中确认思考强度滑杆，并点击当前强度行（如 `Instant / 极速`）打开模型列表。
-6. 在模型列表中选择 `GPT-5.6 Sol`。
-7. 重新打开入口，确认目标是滑杆控件后，通过 `End` 键事件或滑杆内部点击把它设到最右端。
+5. 在浮层中确认思考强度滑杆，通过原生 range 赋值、`End`、重复 `ArrowRight` 或滑杆内部 pointer 事件把它设到最右端。
+6. 如果滑杆暴露数值型 ARIA 属性，必须验证 `aria-valuenow` 已达到 `aria-valuemax`。
+7. 点击当前强度行（如 `High / 高`）打开模型列表，并选择 `GPT-5.6 Sol`。
 8. 如果没有识别到新版滑杆，才依次尝试上一版 `Advanced / 高级` 流程和旧版 `Thinking -> Extended` 流程。
 
 为避免误触，脚本会在每次操作前复核目标元素仍然可见、仍连接在文档中，并确认点击坐标解析到该元素自身或其子元素。任何带有 `voice / microphone / dictation / recording / 语音 / 麦克风 / 录音` 等语义的控件都会被硬性拒绝；脚本也不再通过“在菜单行附近找一个按钮”的方式猜测子菜单入口。
@@ -183,7 +183,7 @@ ChatGPT 网页端后台接口不是公开 API。直接改 payload 容易随版�
 
 ## 版本
 
-- 当前版本：`0.5.0`
+- 当前版本：`0.5.1`
 - 更新时间：`2026-08-29`
 
 ## 许可证
